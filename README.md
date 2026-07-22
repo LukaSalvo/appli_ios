@@ -13,6 +13,11 @@ et ce qu'il vous reste à vivre.
     seconde (via `TimelineView`, sans `Timer` manuel).
   - **Au mois** : votre salaire net s'accumule au fil du mois, avec la part déjà
     « gagnée » à ce jour et une barre de progression du mois.
+- **Saisie manuelle d'une journée** : renseignez l'heure d'arrivée, l'heure de
+  départ et le temps de pause — les heures travaillées (amplitude − pause) et la
+  paie estimée s'affichent en direct. Gère aussi les horaires de nuit.
+- **Pause** : ajustable aussi pendant une session en direct ; elle est déduite
+  des heures payées.
 - **Avantages configurables** : *par heure* (s'ajoute au taux horaire) ou
   *par prise de poste* (montant fixe ajouté au démarrage d'une session).
 
@@ -26,8 +31,11 @@ et ce qu'il vous reste à vivre.
 - Le budget bascule automatiquement selon le mode de paie (heures cumulées du
   mois, ou salaire mensuel).
 
-### Historique
-- Sessions terminées, avec totaux **de la semaine** et **du mois**.
+### Heures & historique
+- **Cumul d'heures travaillées** par **jour / semaine / mois** (sélecteur), avec
+  nombre de sessions et gains sur la période.
+- **Graphique** en barres des heures de la semaine (jour en cours mis en avant).
+- Sessions terminées listées avec durée et horaires.
 - Chaque session garde un **snapshot** du taux et des avantages du moment :
   modifier vos réglages plus tard ne fausse pas l'historique.
 
@@ -37,12 +45,13 @@ et ce qu'il vous reste à vivre.
 PayTracker/
   PayTrackerApp.swift          # Point d'entrée, ModelContainer SwiftData
   ContentView.swift            # TabView (Suivi / Budget / Historique / Réglages)
-  Theme.swift                  # Couleurs + composant Card réutilisable
+  Theme.swift                  # Couleurs, dégradés + composant Card réutilisable
   Models/
     PayMode.swift              # Mode de paie + helpers (format €, fraction du mois)
     Benefit.swift              # Avantage (nom, montant, type, actif)
     Expense.swift              # Dépense fixe mensuelle (nom, montant, catégorie)
     Budget.swift               # Calcul du budget + config tickets restaurant
+    WorkStats.swift            # Cumul d'heures jour/semaine/mois + série hebdo
     WorkSession.swift          # Session de travail (dates + snapshot des taux)
   Views/
     TrackerView.swift          # Suivi live (heure) ou salaire cumulé (mois)
@@ -50,7 +59,9 @@ PayTracker/
     BudgetRing.swift           # Anneau « reste à vivre »
     ExpensesView.swift         # Liste des dépenses fixes
     AddExpenseView.swift       # Ajout d'une dépense
-    HistoryView.swift          # Historique des sessions
+    HistoryView.swift          # Heures (jour/semaine/mois) + graphique + sessions
+    WeekBarChart.swift         # Graphique en barres des heures de la semaine
+    AddSessionView.swift       # Saisie manuelle : arrivée, départ, pause
     SettingsView.swift         # Mode de paie, avantages, tickets restau, budget
     BenefitRowView.swift
     AddBenefitView.swift

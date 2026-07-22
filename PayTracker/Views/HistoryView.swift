@@ -9,71 +9,144 @@ struct HistoryView: View {
     )
     private var pastSessions: [WorkSession]
 
-    private func total(since start: Date) -> Double {
-        pastSessions.filter { $0.startDate >= start }.reduce(0) { $0 + $1.totalPay() }
-    }
+    @State private var period: StatsPeriod = .week
 
-    private var weekTotal: Double {
-        let cal = Calendar.current
-        guard let start = cal.dateInterval(of: .weekOfYear, for: .now)?.start else { return 0 }
-        return total(since: start)
-    }
-
-    private var monthTotal: Double {
-        let cal = Calendar.current
-        guard let start = cal.dateInterval(of: .month, for: .now)?.start else { return 0 }
-        return total(since: start)
-    }
+    private var stats: WorkStats { WorkStats(sessions: pastSessions) }
 
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    summaryRow("Cette semaine", weekTotal)
-                    summaryRow("Ce mois-ci", monthTotal)
+            ScrollView {
+                VStack(spacing: 16) {
+                    hoursCard
+                    chartCard
+                    sessionsCard
                 }
+                .padding()
+            }
+            .background(Color(.systemGroupedBackground))
+            .navigationTitle("Heures & historique")
+        }
+    }
 
-                Section("Sessions passées") {
-                    if pastSessions.isEmpty {
-                        Text("Aucune session terminée pour le moment.")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ForEach(pastSessions) { session in
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(session.startDate, style: .date)
-                                        .font(.subheadline.bold())
-                                    Spacer()
-                                    Text(Money.string(session.totalPay()))
-                                        .font(.subheadline.bold())
-                                        .foregroundStyle(Color.moneyGood)
-                                        .monospacedDigit()
-                                }
-                                Text(timeRange(session))
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
+    // MARK: - Hours breakdown
+
+    private var hoursCard: some View {
+        Card {
+            VStack(spacing: 14) {
+                Picker("Période", selection: $period) {
+                    ForEach(StatsPeriod.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+
+                Text(formatHours(stats.hours(period)))
+                    .font(.system(size: 46, weight: .heavy, design: .rounded))
+                    .foregroundStyle(LinearGradient.moneyText)
+                    .contentTransition(.numericText())
+                    .animation(.snappy, value: period)
+
+                Text(periodSubtitle)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+
+                Divider()
+
+                HStack {
+                    metric(icon: "number", label: "Sessions", value: "\(stats.sessionCount(period))")
+                    Divider().frame(height: 34)
+                    metric(icon: "eurosign.circle", label: "Gagné",
+                           value: Money.string(stats.earnings(period)), tint: .moneyGood)
+                }
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private var chartCard: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 12) {
+                Label("Heures cette semaine", systemImage: "chart.bar.fill")
+                    .font(.headline)
+                    .foregroundStyle(Color.appAccent)
+                WeekBarChart(data: stats.currentWeek, isToday: stats.isToday)
+            }
+        }
+    }
+
+    private var sessionsCard: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 10) {
+                Label("Sessions récentes", systemImage: "list.bullet")
+                    .font(.headline)
+                if pastSessions.isEmpty {
+                    Text("Aucune session terminée pour le moment.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .padding(.vertical, 6)
+                } else {
+                    let recent = Array(pastSessions.prefix(12))
+                    ForEach(Array(recent.enumerated()), id: \.offset) { index, session in
+                        VStack(alignment: .leading, spacing: 3) {
+                            HStack {
+                                Text(session.startDate, style: .date)
+                                    .font(.subheadline.bold())
+                                Spacer()
+                                Text(Money.string(session.totalPay()))
+                                    .font(.subheadline.bold())
+                                    .foregroundStyle(Color.moneyGood)
+                                    .monospacedDigit()
                             }
+                            HStack(spacing: 6) {
+                                Image(systemName: "clock")
+                                Text(formatHours(session.duration() / 3600))
+                                Text("·")
+                                Text(timeRange(session))
+                                if session.breakDuration > 0 {
+                                    Text("·")
+                                    Image(systemName: "pause.circle")
+                                    Text(formatHours(session.breakDuration / 3600))
+                                }
+                            }
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                        }
+                        .padding(.vertical, 4)
+                        if index < recent.count - 1 {
+                            Divider()
                         }
                     }
                 }
             }
-            .navigationTitle("Historique")
         }
     }
 
-    private func summaryRow(_ label: String, _ value: Double) -> some View {
-        LabeledContent(label) {
-            Text(Money.string(value))
+    // MARK: - Helpers
+
+    private var periodSubtitle: String {
+        switch period {
+        case .day: return "travaillées aujourd'hui"
+        case .week: return "travaillées cette semaine"
+        case .month: return "travaillées ce mois-ci"
+        }
+    }
+
+    private func metric(icon: String, label: String, value: String, tint: Color = .primary) -> some View {
+        VStack(spacing: 3) {
+            Label(label, systemImage: icon)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .labelStyle(.titleAndIcon)
+            Text(value)
                 .font(.headline)
-                .foregroundStyle(Color.moneyGood)
+                .foregroundStyle(tint)
                 .monospacedDigit()
         }
+        .frame(maxWidth: .infinity)
     }
 
     private func timeRange(_ session: WorkSession) -> String {
         let start = session.startDate.formatted(date: .omitted, time: .shortened)
         let end = session.endDate?.formatted(date: .omitted, time: .shortened) ?? "—"
-        return "\(start) - \(end)"
+        return "\(start) – \(end)"
     }
 }
 

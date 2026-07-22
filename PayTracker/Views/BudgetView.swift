@@ -82,7 +82,7 @@ struct BudgetView: View {
     // MARK: - Cards
 
     private var ringCard: some View {
-        Card {
+        Card(hero: true) {
             VStack(spacing: 12) {
                 BudgetRing(
                     spentFraction: summary.spentFraction,

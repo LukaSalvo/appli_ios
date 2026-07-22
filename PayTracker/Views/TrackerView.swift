@@ -13,6 +13,8 @@ struct TrackerView: View {
 
     @Query(sort: \Benefit.createdAt) private var benefits: [Benefit]
 
+    @State private var showingManualEntry = false
+
     private var payMode: PayMode { PayMode(rawValue: payModeRaw) ?? .hourly }
     private var activeSession: WorkSession? { activeSessions.first }
 
@@ -37,6 +39,18 @@ struct TrackerView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Suivi de paie")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showingManualEntry = true
+                    } label: {
+                        Label("Saisir mes heures", systemImage: "square.and.pencil")
+                    }
+                }
+            }
+            .sheet(isPresented: $showingManualEntry) {
+                AddSessionView()
+            }
         }
     }
 
@@ -46,6 +60,7 @@ struct TrackerView: View {
     private var hourlyContent: some View {
         if let session = activeSession {
             liveCard(for: session)
+            pauseCard(for: session)
             Button(role: .destructive) {
                 session.endDate = Date()
             } label: {
@@ -82,7 +97,50 @@ struct TrackerView: View {
             .buttonStyle(.borderedProminent)
             .tint(.appAccent)
             .controlSize(.large)
+
+            Button {
+                showingManualEntry = true
+            } label: {
+                Label("Saisir mes heures (arrivée, départ, pause)", systemImage: "square.and.pencil")
+                    .font(.subheadline.weight(.semibold))
+                    .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(.bordered)
+            .tint(.appAccent)
+            .controlSize(.large)
         }
+    }
+
+    private func pauseCard(for session: WorkSession) -> some View {
+        Card {
+            Stepper(value: breakMinutesBinding(session), in: 0...600, step: 5) {
+                HStack(spacing: 8) {
+                    Image(systemName: "pause.circle.fill")
+                        .foregroundStyle(Color.appAccent)
+                    Text("Pause")
+                    Spacer()
+                    Text(breakLabel(session.breakDuration))
+                        .fontWeight(.semibold)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private func breakMinutesBinding(_ session: WorkSession) -> Binding<Int> {
+        Binding(
+            get: { Int(session.breakDuration / 60) },
+            set: { session.breakDuration = Double($0) * 60 }
+        )
+    }
+
+    private func breakLabel(_ seconds: TimeInterval) -> String {
+        let minutes = Int(seconds / 60)
+        if minutes == 0 { return "Aucune" }
+        if minutes < 60 { return "\(minutes) min" }
+        let h = minutes / 60, m = minutes % 60
+        return m == 0 ? "\(h) h" : "\(h) h \(m)"
     }
 
     @ViewBuilder
@@ -91,7 +149,7 @@ struct TrackerView: View {
             let elapsed = session.duration(asOf: context.date)
             let total = session.totalPay(asOf: context.date)
 
-            Card {
+            Card(hero: true) {
                 VStack(spacing: 14) {
                     Label("En cours", systemImage: "circle.fill")
                         .font(.caption.bold())
@@ -104,8 +162,8 @@ struct TrackerView: View {
                         .monospacedDigit()
 
                     Text(Money.string(total))
-                        .font(.system(size: 40, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color.moneyGood)
+                        .font(.system(size: 44, weight: .heavy, design: .rounded))
+                        .foregroundStyle(LinearGradient.moneyText)
                         .contentTransition(.numericText())
                         .animation(.default, value: total)
 
@@ -134,7 +192,7 @@ struct TrackerView: View {
             let fraction = monthElapsedFraction(now: context.date)
             let earned = monthlySalary * fraction
 
-            Card {
+            Card(hero: true) {
                 VStack(spacing: 14) {
                     Text(monthTitle(context.date))
                         .font(.caption.bold())
@@ -142,8 +200,8 @@ struct TrackerView: View {
                         .textCase(.uppercase)
 
                     Text(Money.string(earned))
-                        .font(.system(size: 44, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color.moneyGood)
+                        .font(.system(size: 46, weight: .heavy, design: .rounded))
+                        .foregroundStyle(LinearGradient.moneyText)
                         .contentTransition(.numericText())
                         .animation(.default, value: earned)
 
