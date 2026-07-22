@@ -7,6 +7,6 @@ struct PayTrackerApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: [WorkSession.self, Benefit.self])
+        .modelContainer(for: [WorkSession.self, Benefit.self, Expense.self])
     }
 }

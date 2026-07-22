@@ -9,23 +9,28 @@ struct HistoryView: View {
     )
     private var pastSessions: [WorkSession]
 
+    private func total(since start: Date) -> Double {
+        pastSessions.filter { $0.startDate >= start }.reduce(0) { $0 + $1.totalPay() }
+    }
+
     private var weekTotal: Double {
-        let calendar = Calendar.current
-        guard let weekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start else { return 0 }
-        return pastSessions
-            .filter { $0.startDate >= weekStart }
-            .reduce(0) { $0 + $1.totalPay() }
+        let cal = Calendar.current
+        guard let start = cal.dateInterval(of: .weekOfYear, for: .now)?.start else { return 0 }
+        return total(since: start)
+    }
+
+    private var monthTotal: Double {
+        let cal = Calendar.current
+        guard let start = cal.dateInterval(of: .month, for: .now)?.start else { return 0 }
+        return total(since: start)
     }
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    LabeledContent("Total cette semaine") {
-                        Text(weekTotal, format: .currency(code: "EUR"))
-                            .font(.headline)
-                            .foregroundStyle(.green)
-                    }
+                    summaryRow("Cette semaine", weekTotal)
+                    summaryRow("Ce mois-ci", monthTotal)
                 }
 
                 Section("Sessions passées") {
@@ -39,11 +44,12 @@ struct HistoryView: View {
                                     Text(session.startDate, style: .date)
                                         .font(.subheadline.bold())
                                     Spacer()
-                                    Text(session.totalPay(), format: .currency(code: "EUR"))
+                                    Text(Money.string(session.totalPay()))
                                         .font(.subheadline.bold())
-                                        .foregroundStyle(.green)
+                                        .foregroundStyle(Color.moneyGood)
+                                        .monospacedDigit()
                                 }
-                                Text(sessionTimeRange(session))
+                                Text(timeRange(session))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -55,7 +61,16 @@ struct HistoryView: View {
         }
     }
 
-    private func sessionTimeRange(_ session: WorkSession) -> String {
+    private func summaryRow(_ label: String, _ value: Double) -> some View {
+        LabeledContent(label) {
+            Text(Money.string(value))
+                .font(.headline)
+                .foregroundStyle(Color.moneyGood)
+                .monospacedDigit()
+        }
+    }
+
+    private func timeRange(_ session: WorkSession) -> String {
         let start = session.startDate.formatted(date: .omitted, time: .shortened)
         let end = session.endDate?.formatted(date: .omitted, time: .shortened) ?? "—"
         return "\(start) - \(end)"
@@ -64,5 +79,5 @@ struct HistoryView: View {
 
 #Preview {
     HistoryView()
-        .modelContainer(for: [WorkSession.self, Benefit.self], inMemory: true)
+        .modelContainer(for: [WorkSession.self, Benefit.self, Expense.self], inMemory: true)
 }

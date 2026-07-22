@@ -4,7 +4,10 @@ struct ContentView: View {
     var body: some View {
         TabView {
             TrackerView()
-                .tabItem { Label("Suivi", systemImage: "clock.fill") }
+                .tabItem { Label("Suivi", systemImage: "timer") }
+
+            BudgetView()
+                .tabItem { Label("Budget", systemImage: "chart.pie.fill") }
 
             HistoryView()
                 .tabItem { Label("Historique", systemImage: "list.bullet") }
@@ -12,10 +15,11 @@ struct ContentView: View {
             SettingsView()
                 .tabItem { Label("Réglages", systemImage: "gearshape.fill") }
         }
+        .tint(.appAccent)
     }
 }
 
 #Preview {
     ContentView()
-        .modelContainer(for: [WorkSession.self, Benefit.self], inMemory: true)
+        .modelContainer(for: [WorkSession.self, Benefit.self, Expense.self], inMemory: true)
 }
