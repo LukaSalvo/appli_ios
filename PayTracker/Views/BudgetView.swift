@@ -5,6 +5,10 @@ struct BudgetView: View {
     @AppStorage("payMode") private var payModeRaw: String = PayMode.hourly.rawValue
     @AppStorage("monthlySalary") private var monthlySalary: Double = 1800
 
+    // Current account balance
+    @AppStorage("currentBalance") private var currentBalance: Double = 0
+    @State private var showingEditBalance = false
+
     // Meal-ticket settings
     @AppStorage("mealTicketsEnabled") private var mealTicketsEnabled: Bool = true
     @AppStorage("mealTicketValue") private var mealTicketValue: Double = 9.0
@@ -61,10 +65,25 @@ struct BudgetView: View {
         )
     }
 
+    /// What's left to receive/pay this month, based on how much of the month has elapsed.
+    private var remainingIncomeThisMonth: Double {
+        summary.totalIncome * (1 - monthElapsedFraction())
+    }
+    private var remainingExpensesThisMonth: Double {
+        summary.totalExpenses * (1 - monthElapsedFraction())
+    }
+
+    /// Current balance projected to the end of the month, given what's left to
+    /// come in (salary/benefits not yet received) and go out (expenses not yet paid).
+    private var projectedEndOfMonthBalance: Double {
+        currentBalance + remainingIncomeThisMonth - remainingExpensesThisMonth
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 20) {
+                    balanceCard
                     ringCard
                     incomeCard
                     if mealTicketsEnabled {
@@ -76,10 +95,53 @@ struct BudgetView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Budget")
+            .sheet(isPresented: $showingEditBalance) {
+                EditBalanceView(balance: $currentBalance)
+            }
         }
     }
 
     // MARK: - Cards
+
+    private var balanceCard: some View {
+        Card(hero: true) {
+            VStack(spacing: 12) {
+                HStack {
+                    Label("Solde actuel", systemImage: "banknote.fill")
+                        .font(.headline)
+                        .foregroundStyle(Color.goldInk)
+                    Spacer()
+                    Button {
+                        showingEditBalance = true
+                    } label: {
+                        Image(systemName: "pencil.circle.fill")
+                            .font(.title2)
+                            .foregroundStyle(Color.appAccent)
+                    }
+                }
+                Text(Money.string(currentBalance))
+                    .font(.system(size: 40, weight: .heavy, design: .rounded))
+                    .foregroundStyle(LinearGradient.moneyText)
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .animation(.default, value: currentBalance)
+                Divider()
+                HStack {
+                    Text("Estimé en fin de mois")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    Spacer()
+                    Text(Money.string(projectedEndOfMonthBalance))
+                        .font(.subheadline.bold())
+                        .monospacedDigit()
+                        .foregroundStyle(projectedEndOfMonthBalance < 0 ? Color.moneyDanger : Color.moneyGood)
+                }
+            }
+        }
+        .onTapGesture {
+            showingEditBalance = true
+        }
+    }
 
     private var ringCard: some View {
         Card(hero: true) {
