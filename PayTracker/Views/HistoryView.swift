@@ -25,7 +25,7 @@ struct HistoryView: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.appBackground)
             .navigationTitle("Heures & historique")
             .confirmationDialog(
                 "Supprimer cette session ?",
@@ -37,6 +37,7 @@ struct HistoryView: View {
                 presenting: sessionToDelete
             ) { session in
                 Button("Supprimer", role: .destructive) {
+                    Haptics.impact(.rigid)
                     modelContext.delete(session)
                     sessionToDelete = nil
                 }
@@ -50,17 +51,14 @@ struct HistoryView: View {
     // MARK: - Hours breakdown
 
     private var hoursCard: some View {
-        Card {
+        Card(hero: true) {
             VStack(spacing: 14) {
                 Picker("Période", selection: $period) {
                     ForEach(StatsPeriod.allCases) { Text($0.rawValue).tag($0) }
                 }
                 .pickerStyle(.segmented)
 
-                Text(formatHours(stats.hours(period)))
-                    .font(.system(size: 46, weight: .heavy, design: .rounded))
-                    .foregroundStyle(LinearGradient.moneyText)
-                    .contentTransition(.numericText())
+                HeroAmountText(value: formatHours(stats.hours(period)), size: 46)
                     .animation(.snappy, value: period)
 
                 Text(periodSubtitle)

@@ -93,7 +93,7 @@ struct BudgetView: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.appBackground)
             .navigationTitle("Budget")
             .sheet(isPresented: $showingEditBalance) {
                 EditBalanceView(balance: $currentBalance)
@@ -107,9 +107,7 @@ struct BudgetView: View {
         Card(hero: true) {
             VStack(spacing: 12) {
                 HStack {
-                    Label("Solde actuel", systemImage: "banknote.fill")
-                        .font(.headline)
-                        .foregroundStyle(Color.goldInk)
+                    Text("Solde actuel").eyebrow()
                     Spacer()
                     Button {
                         showingEditBalance = true
@@ -119,11 +117,7 @@ struct BudgetView: View {
                             .foregroundStyle(Color.appAccent)
                     }
                 }
-                Text(Money.string(currentBalance))
-                    .font(.system(size: 40, weight: .heavy, design: .rounded))
-                    .foregroundStyle(LinearGradient.moneyText)
-                    .monospacedDigit()
-                    .contentTransition(.numericText())
+                HeroAmountText(value: Money.string(currentBalance))
                     .animation(.default, value: currentBalance)
                 Divider()
                 HStack {

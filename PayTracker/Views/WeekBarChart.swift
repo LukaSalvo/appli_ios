@@ -5,6 +5,7 @@ struct WeekBarChart: View {
     let data: [DailyHours]
     var isToday: (Date) -> Bool = { _ in false }
 
+    @Environment(\.colorScheme) private var colorScheme
     private let maxBarHeight: CGFloat = 104
 
     var body: some View {
@@ -21,11 +22,13 @@ struct WeekBarChart: View {
 
                     ZStack(alignment: .bottom) {
                         RoundedRectangle(cornerRadius: 7)
-                            .fill(Color(.systemGray5))
+                            .fill(Color.appTrack)
                             .frame(height: maxBarHeight)
                         RoundedRectangle(cornerRadius: 7)
-                            .fill(today ? LinearGradient.accentBar : LinearGradient.mutedBar)
+                            .fill(Color.appAccent.opacity(today ? 1 : 0.35))
                             .frame(height: max(6, maxBarHeight * day.hours / peak))
+                            .shadow(color: today ? Color.appAccent.opacity(colorScheme == .dark ? 0.6 : 0.2) : .clear,
+                                    radius: 6, y: 2)
                     }
                     .frame(maxWidth: .infinity)
 
@@ -47,17 +50,6 @@ struct WeekBarChart: View {
             ? String(format: "%.0f", hours) + "h"
             : String(Int((hours * 60).rounded())) + "m"
     }
-}
-
-extension LinearGradient {
-    static let accentBar = LinearGradient(
-        colors: [Color(red: 0.16, green: 0.78, blue: 0.58), Color.appAccent],
-        startPoint: .top, endPoint: .bottom
-    )
-    static let mutedBar = LinearGradient(
-        colors: [Color.appAccent.opacity(0.55), Color.appAccent.opacity(0.32)],
-        startPoint: .top, endPoint: .bottom
-    )
 }
 
 #Preview {

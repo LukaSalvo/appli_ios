@@ -1,6 +1,10 @@
 import SwiftUI
 
 struct ContentView: View {
+    @AppStorage("appearanceMode") private var appearanceModeRaw: String = AppearanceMode.system.rawValue
+
+    private var appearanceMode: AppearanceMode { AppearanceMode(rawValue: appearanceModeRaw) ?? .system }
+
     var body: some View {
         TabView {
             TrackerView()
@@ -16,6 +20,8 @@ struct ContentView: View {
                 .tabItem { Label("Réglages", systemImage: "gearshape.fill") }
         }
         .tint(.appAccent)
+        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+        .preferredColorScheme(appearanceMode.colorScheme)
     }
 }
 
