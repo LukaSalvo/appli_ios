@@ -9,7 +9,9 @@ struct HistoryView: View {
     )
     private var pastSessions: [WorkSession]
 
+    @Environment(\.modelContext) private var modelContext
     @State private var period: StatsPeriod = .week
+    @State private var sessionToDelete: WorkSession?
 
     private var stats: WorkStats { WorkStats(sessions: pastSessions) }
 
@@ -25,6 +27,23 @@ struct HistoryView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Heures & historique")
+            .confirmationDialog(
+                "Supprimer cette session ?",
+                isPresented: Binding(
+                    get: { sessionToDelete != nil },
+                    set: { if !$0 { sessionToDelete = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: sessionToDelete
+            ) { session in
+                Button("Supprimer", role: .destructive) {
+                    modelContext.delete(session)
+                    sessionToDelete = nil
+                }
+                Button("Annuler", role: .cancel) { sessionToDelete = nil }
+            } message: { session in
+                Text("\(session.startDate.formatted(date: .abbreviated, time: .omitted)) · \(formatHours(session.duration() / 3600))")
+            }
         }
     }
 
@@ -85,29 +104,42 @@ struct HistoryView: View {
                 } else {
                     let recent = Array(pastSessions.prefix(12))
                     ForEach(Array(recent.enumerated()), id: \.offset) { index, session in
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack {
-                                Text(session.startDate, style: .date)
-                                    .font(.subheadline.bold())
-                                Spacer()
-                                Text(Money.string(session.totalPay()))
-                                    .font(.subheadline.bold())
-                                    .foregroundStyle(Color.moneyGood)
-                                    .monospacedDigit()
-                            }
-                            HStack(spacing: 6) {
-                                Image(systemName: "clock")
-                                Text(formatHours(session.duration() / 3600))
-                                Text("·")
-                                Text(timeRange(session))
-                                if session.breakDuration > 0 {
-                                    Text("·")
-                                    Image(systemName: "pause.circle")
-                                    Text(formatHours(session.breakDuration / 3600))
+                        HStack(spacing: 10) {
+                            VStack(alignment: .leading, spacing: 3) {
+                                HStack {
+                                    Text(session.startDate, style: .date)
+                                        .font(.subheadline.bold())
+                                    Spacer()
+                                    Text(Money.string(session.totalPay()))
+                                        .font(.subheadline.bold())
+                                        .foregroundStyle(Color.moneyGood)
+                                        .monospacedDigit()
                                 }
+                                HStack(spacing: 6) {
+                                    Image(systemName: "clock")
+                                    Text(formatHours(session.duration() / 3600))
+                                    Text("·")
+                                    Text(timeRange(session))
+                                    if session.breakDuration > 0 {
+                                        Text("·")
+                                        Image(systemName: "pause.circle")
+                                        Text(formatHours(session.breakDuration / 3600))
+                                    }
+                                }
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                             }
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            Button {
+                                sessionToDelete = session
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.callout)
+                                    .foregroundStyle(.secondary)
+                                    .padding(6)
+                                    .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Supprimer la session")
                         }
                         .padding(.vertical, 4)
                         if index < recent.count - 1 {

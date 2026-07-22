@@ -116,7 +116,7 @@ struct BudgetView: View {
     private var mealTicketCard: some View {
         Card {
             VStack(alignment: .leading, spacing: 10) {
-                sectionHeader("Tickets restaurant", systemImage: "fork.knife", tint: .appAccent)
+                sectionHeader("Tickets restaurant", systemImage: "fork.knife", tint: .goldInk)
                 line("Tickets ce mois", "\(mealConfig.daysWorked) × \(Money.string(mealTicketValue))")
                 line("Valeur totale", Money.string(mealConfig.totalFaceValue))
                 line("Payé par l'employeur (\(Int(mealTicketEmployerPct)) %)",
