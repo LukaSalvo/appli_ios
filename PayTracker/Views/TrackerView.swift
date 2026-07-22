@@ -153,7 +153,7 @@ struct TrackerView: View {
                 VStack(spacing: 14) {
                     Label("En cours", systemImage: "circle.fill")
                         .font(.caption.bold())
-                        .foregroundStyle(Color.appAccent)
+                        .foregroundStyle(Color.goldInk)
                         .labelStyle(.titleAndIcon)
                         .imageScale(.small)
 
