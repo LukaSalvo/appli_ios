@@ -11,6 +11,7 @@ targets:
     sources:
       - PayTracker
     info:
+      path: PayTracker/Info.plist
       properties:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
