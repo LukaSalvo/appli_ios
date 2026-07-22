@@ -10,7 +10,7 @@ struct ContentView: View {
                 .tabItem { Label("Budget", systemImage: "chart.pie.fill") }
 
             HistoryView()
-                .tabItem { Label("Historique", systemImage: "list.bullet") }
+                .tabItem { Label("Heures", systemImage: "chart.bar.fill") }
 
             SettingsView()
                 .tabItem { Label("Réglages", systemImage: "gearshape.fill") }

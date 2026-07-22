@@ -91,7 +91,7 @@ struct TrackerView: View {
             let elapsed = session.duration(asOf: context.date)
             let total = session.totalPay(asOf: context.date)
 
-            Card {
+            Card(hero: true) {
                 VStack(spacing: 14) {
                     Label("En cours", systemImage: "circle.fill")
                         .font(.caption.bold())
@@ -104,8 +104,8 @@ struct TrackerView: View {
                         .monospacedDigit()
 
                     Text(Money.string(total))
-                        .font(.system(size: 40, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color.moneyGood)
+                        .font(.system(size: 44, weight: .heavy, design: .rounded))
+                        .foregroundStyle(LinearGradient.moneyText)
                         .contentTransition(.numericText())
                         .animation(.default, value: total)
 
@@ -134,7 +134,7 @@ struct TrackerView: View {
             let fraction = monthElapsedFraction(now: context.date)
             let earned = monthlySalary * fraction
 
-            Card {
+            Card(hero: true) {
                 VStack(spacing: 14) {
                     Text(monthTitle(context.date))
                         .font(.caption.bold())
@@ -142,8 +142,8 @@ struct TrackerView: View {
                         .textCase(.uppercase)
 
                     Text(Money.string(earned))
-                        .font(.system(size: 44, weight: .heavy, design: .rounded))
-                        .foregroundStyle(Color.moneyGood)
+                        .font(.system(size: 46, weight: .heavy, design: .rounded))
+                        .foregroundStyle(LinearGradient.moneyText)
                         .contentTransition(.numericText())
                         .animation(.default, value: earned)
 
