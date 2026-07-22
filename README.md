@@ -13,6 +13,11 @@ et ce qu'il vous reste à vivre.
     seconde (via `TimelineView`, sans `Timer` manuel).
   - **Au mois** : votre salaire net s'accumule au fil du mois, avec la part déjà
     « gagnée » à ce jour et une barre de progression du mois.
+- **Saisie manuelle d'une journée** : renseignez l'heure d'arrivée, l'heure de
+  départ et le temps de pause — les heures travaillées (amplitude − pause) et la
+  paie estimée s'affichent en direct. Gère aussi les horaires de nuit.
+- **Pause** : ajustable aussi pendant une session en direct ; elle est déduite
+  des heures payées.
 - **Avantages configurables** : *par heure* (s'ajoute au taux horaire) ou
   *par prise de poste* (montant fixe ajouté au démarrage d'une session).
 
@@ -56,6 +61,7 @@ PayTracker/
     AddExpenseView.swift       # Ajout d'une dépense
     HistoryView.swift          # Heures (jour/semaine/mois) + graphique + sessions
     WeekBarChart.swift         # Graphique en barres des heures de la semaine
+    AddSessionView.swift       # Saisie manuelle : arrivée, départ, pause
     SettingsView.swift         # Mode de paie, avantages, tickets restau, budget
     BenefitRowView.swift
     AddBenefitView.swift

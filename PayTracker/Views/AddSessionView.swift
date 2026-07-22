@@ -1,0 +1,136 @@
+import SwiftUI
+import SwiftData
+
+/// Manually log a worked day from an arrival time, a departure time and a
+/// break duration — the worked hours and estimated pay update live.
+struct AddSessionView: View {
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
+    @AppStorage("hourlyRate") private var hourlyRate: Double = 11.65
+    @Query(sort: \Benefit.createdAt) private var benefits: [Benefit]
+
+    @State private var day: Date = .now
+    @State private var arrival: Date = defaultTime(hour: 9)
+    @State private var departure: Date = defaultTime(hour: 17)
+    @State private var breakMinutes: Int = 60
+
+    private var enabledPerHour: Double {
+        benefits.filter { $0.isEnabled && $0.type == .perHour }.reduce(0) { $0 + $1.amount }
+    }
+    private var enabledFixed: Double {
+        benefits.filter { $0.isEnabled && $0.type == .perShift }.reduce(0) { $0 + $1.amount }
+    }
+
+    private var startDate: Date { combine(day: day, time: arrival) }
+    private var endDate: Date {
+        var end = combine(day: day, time: departure)
+        if end <= startDate { end.addTimeInterval(24 * 3600) } // crosses midnight
+        return end
+    }
+    private var workedSeconds: TimeInterval {
+        max(0, endDate.timeIntervalSince(startDate) - Double(breakMinutes) * 60)
+    }
+    private var estimatedPay: Double {
+        workedSeconds / 3600 * (hourlyRate + enabledPerHour) + enabledFixed
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("Journée") {
+                    DatePicker("Date", selection: $day, displayedComponents: .date)
+                }
+
+                Section("Horaires") {
+                    DatePicker("Heure d'arrivée", selection: $arrival, displayedComponents: .hourAndMinute)
+                    DatePicker("Heure de départ", selection: $departure, displayedComponents: .hourAndMinute)
+                    Picker("Pause", selection: $breakMinutes) {
+                        ForEach(breakOptions, id: \.self) { m in
+                            Text(breakLabel(m)).tag(m)
+                        }
+                    }
+                }
+
+                Section {
+                    summaryRow("Heures travaillées", formatHours(workedSeconds / 3600),
+                               tint: .appAccent, big: true)
+                    summaryRow("Amplitude", formatHours(endDate.timeIntervalSince(startDate) / 3600))
+                    summaryRow("Pause déduite", breakLabel(breakMinutes))
+                    summaryRow("Paie estimée", Money.string(estimatedPay), tint: .moneyGood)
+                } header: {
+                    Text("Récapitulatif")
+                } footer: {
+                    Text("Basé sur votre taux (\(Money.string(hourlyRate))/h) et vos avantages actifs.")
+                }
+            }
+            .navigationTitle("Saisir mes heures")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Annuler") { dismiss() }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Enregistrer", action: save)
+                        .disabled(workedSeconds <= 0)
+                }
+            }
+        }
+    }
+
+    private func save() {
+        let session = WorkSession(
+            startDate: startDate,
+            endDate: endDate,
+            breakDuration: Double(breakMinutes) * 60,
+            hourlyRateSnapshot: hourlyRate,
+            perHourBenefitsSnapshot: enabledPerHour,
+            fixedBenefitsSnapshot: enabledFixed
+        )
+        modelContext.insert(session)
+        dismiss()
+    }
+
+    // MARK: - UI helpers
+
+    private func summaryRow(_ label: String, _ value: String, tint: Color = .primary, big: Bool = false) -> some View {
+        HStack {
+            Text(label)
+            Spacer()
+            Text(value)
+                .font(big ? .title3.weight(.bold) : .body.weight(.semibold))
+                .foregroundStyle(tint)
+                .monospacedDigit()
+        }
+    }
+
+    private var breakOptions: [Int] { [0, 15, 20, 30, 45, 60, 90, 120] }
+
+    private func breakLabel(_ minutes: Int) -> String {
+        if minutes == 0 { return "Aucune" }
+        if minutes < 60 { return "\(minutes) min" }
+        let h = minutes / 60, m = minutes % 60
+        return m == 0 ? "\(h) h" : "\(h) h \(m)"
+    }
+
+    // MARK: - Date helpers
+
+    private func combine(day: Date, time: Date) -> Date {
+        let cal = Calendar.current
+        let d = cal.dateComponents([.year, .month, .day], from: day)
+        let t = cal.dateComponents([.hour, .minute], from: time)
+        var c = DateComponents()
+        c.year = d.year; c.month = d.month; c.day = d.day
+        c.hour = t.hour; c.minute = t.minute
+        return cal.date(from: c) ?? day
+    }
+}
+
+private func defaultTime(hour: Int) -> Date {
+    Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: .now) ?? .now
+}
+
+#Preview {
+    AddSessionView()
+        .modelContainer(for: [WorkSession.self, Benefit.self, Expense.self], inMemory: true)
+}

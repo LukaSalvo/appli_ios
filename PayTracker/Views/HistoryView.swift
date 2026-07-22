@@ -100,6 +100,11 @@ struct HistoryView: View {
                                 Text(formatHours(session.duration() / 3600))
                                 Text("·")
                                 Text(timeRange(session))
+                                if session.breakDuration > 0 {
+                                    Text("·")
+                                    Image(systemName: "pause.circle")
+                                    Text(formatHours(session.breakDuration / 3600))
+                                }
                             }
                             .font(.caption)
                             .foregroundStyle(.secondary)
