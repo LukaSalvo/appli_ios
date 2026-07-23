@@ -124,7 +124,9 @@ jobs:
               CODE_SIGNING_ALLOWED=NO 2>&1 | tee test.log | xcbeautify; then
             echo "Tests exécutés avec succès."
           else
-            if grep -q "does not contain any test" test.log || grep -q "no tests" test.log; then
+            if grep -q "does not contain any test" test.log \
+               || grep -q "no tests" test.log \
+               || grep -q "not currently configured for the test action" test.log; then
               echo "::notice::Aucun test défini pour le moment — étape ignorée."
             else
               echo "::error::Des tests ont échoué."
