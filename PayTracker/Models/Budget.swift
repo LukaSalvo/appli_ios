@@ -28,18 +28,24 @@ struct MealTicketConfig {
     }
 }
 
-/// A month's financial picture: what comes in vs. the fixed costs going out.
+/// A month's financial picture: what comes in vs. everything going out —
+/// both the recurring fixed costs and the variable spending logged this month.
 struct BudgetSummary {
     var salaryIncome: Double
     var mealTicketBenefit: Double
-    var totalExpenses: Double
+    var totalExpenses: Double          // recurring fixed costs
+    var variableExpenses: Double = 0   // one-off spending logged this month
 
     var totalIncome: Double { salaryIncome + mealTicketBenefit }
-    var remaining: Double { totalIncome - totalExpenses }
 
-    /// Share of income already committed to fixed expenses (0...1).
+    /// Everything leaving the account this month.
+    var totalSpending: Double { totalExpenses + variableExpenses }
+
+    var remaining: Double { totalIncome - totalSpending }
+
+    /// Share of income already spent (0...1), used by the budget ring.
     var spentFraction: Double {
         guard totalIncome > 0 else { return 0 }
-        return min(max(totalExpenses / totalIncome, 0), 1)
+        return min(max(totalSpending / totalIncome, 0), 1)
     }
 }
