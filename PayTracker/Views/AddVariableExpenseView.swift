@@ -11,9 +11,33 @@ struct AddVariableExpenseView: View {
     @State private var category: ExpenseCategory = .food
     @State private var date: Date = .now
 
+    @State private var naturalText: String = ""
+    @State private var isParsing: Bool = false
+
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    HStack {
+                        TextField("Ex : 25€ resto hier", text: $naturalText)
+                            .submitLabel(.done)
+                            .onSubmit { runSmartParse() }
+                        Button(action: runSmartParse) {
+                            if isParsing {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "wand.and.stars")
+                            }
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(naturalText.trimmingCharacters(in: .whitespaces).isEmpty || isParsing)
+                    }
+                } header: {
+                    Text("Saisie rapide")
+                } footer: {
+                    Text(smartFooter)
+                }
+
                 Section("Dépense") {
                     TextField("Nom (ex : Courses, Resto, Essence)", text: $name)
                     TextField("Montant", value: $amount, format: .number.precision(.fractionLength(2)))
@@ -45,6 +69,29 @@ struct AddVariableExpenseView: View {
                     }
                     .disabled(name.trimmingCharacters(in: .whitespaces).isEmpty || amount <= 0)
                 }
+            }
+        }
+    }
+
+    private var smartFooter: String {
+        if ExpenseTextParser.isOnDeviceModelAvailable {
+            return "Analysé par l'IA d'Apple, directement sur votre iPhone — rien n'est envoyé en ligne."
+        }
+        return "Reconnaît le montant, la catégorie et la date. L'analyse est améliorée par l'IA d'Apple sur iPhone compatible (iOS 26)."
+    }
+
+    private func runSmartParse() {
+        let text = naturalText.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty, !isParsing else { return }
+        isParsing = true
+        Task {
+            let parsed = await ExpenseTextParser.parse(text)
+            await MainActor.run {
+                if parsed.amount > 0 { amount = parsed.amount }
+                name = parsed.name
+                category = parsed.category
+                date = parsed.date
+                isParsing = false
             }
         }
     }
