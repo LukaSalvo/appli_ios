@@ -1,6 +1,24 @@
 import Foundation
 import SwiftData
 
+/// What a day represents — useful for work-study ("alternance") where the
+/// calendar mixes company days and school days.
+enum SessionKind: String, Codable, CaseIterable, Identifiable {
+    case entreprise = "Entreprise"
+    case ecole = "École"
+    case autre = "Autre"
+
+    var id: String { rawValue }
+
+    var systemImage: String {
+        switch self {
+        case .entreprise: return "building.2.fill"
+        case .ecole: return "graduationcap.fill"
+        case .autre: return "calendar"
+        }
+    }
+}
+
 @Model
 final class WorkSession {
     var startDate: Date
@@ -16,13 +34,22 @@ final class WorkSession {
     var perHourBenefitsSnapshot: Double
     var fixedBenefitsSnapshot: Double
 
+    /// Company / school / other — defaults to company for existing data.
+    var kindRaw: String = SessionKind.entreprise.rawValue
+
+    var kind: SessionKind {
+        get { SessionKind(rawValue: kindRaw) ?? .entreprise }
+        set { kindRaw = newValue.rawValue }
+    }
+
     init(
         startDate: Date,
         endDate: Date? = nil,
         breakDuration: TimeInterval = 0,
         hourlyRateSnapshot: Double,
         perHourBenefitsSnapshot: Double,
-        fixedBenefitsSnapshot: Double
+        fixedBenefitsSnapshot: Double,
+        kind: SessionKind = .entreprise
     ) {
         self.startDate = startDate
         self.endDate = endDate
@@ -30,6 +57,7 @@ final class WorkSession {
         self.hourlyRateSnapshot = hourlyRateSnapshot
         self.perHourBenefitsSnapshot = perHourBenefitsSnapshot
         self.fixedBenefitsSnapshot = fixedBenefitsSnapshot
+        self.kindRaw = kind.rawValue
     }
 
     var isActive: Bool { endDate == nil }

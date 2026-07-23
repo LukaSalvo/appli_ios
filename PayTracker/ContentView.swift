@@ -13,13 +13,17 @@ struct ContentView: View {
                 .tabItem { Label("Budget", systemImage: "chart.pie.fill") }
                 .tag(1)
 
+            AgendaView()
+                .tabItem { Label("Agenda", systemImage: "calendar") }
+                .tag(2)
+
             HistoryView()
                 .tabItem { Label("Heures", systemImage: "chart.bar.fill") }
-                .tag(2)
+                .tag(3)
 
             SettingsView()
                 .tabItem { Label("Réglages", systemImage: "gearshape.fill") }
-                .tag(3)
+                .tag(4)
         }
         .tint(.appAccent)
         .onOpenURL { url in

@@ -12,6 +12,7 @@ enum StatsPeriod: String, CaseIterable, Identifiable {
     case day = "Jour"
     case week = "Semaine"
     case month = "Mois"
+    case year = "Année"
 
     var id: String { rawValue }
 
@@ -20,6 +21,7 @@ enum StatsPeriod: String, CaseIterable, Identifiable {
         case .day: return .day
         case .week: return .weekOfYear
         case .month: return .month
+        case .year: return .year
         }
     }
 }
@@ -92,6 +94,27 @@ struct WorkStats {
     func sessionCount(_ period: StatsPeriod) -> Int {
         let iv = interval(for: period)
         return sessions.filter { iv.contains($0.startDate) }.count
+    }
+
+    /// Pay from sessions that started on the given calendar day.
+    func earnings(onDay date: Date) -> Double {
+        let dayStart = calendar.startOfDay(for: date)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+        return sessions
+            .filter { $0.startDate >= dayStart && $0.startDate < dayEnd }
+            .reduce(0) { $0 + $1.totalPay() }
+    }
+
+    /// The dominant day kind (school wins over company) for a given day, or nil.
+    func kind(onDay date: Date) -> SessionKind? {
+        let dayStart = calendar.startOfDay(for: date)
+        let dayEnd = calendar.date(byAdding: .day, value: 1, to: dayStart) ?? dayStart
+        let kinds = sessions
+            .filter { $0.startDate >= dayStart && $0.startDate < dayEnd }
+            .map(\.kind)
+        if kinds.contains(.ecole) { return .ecole }
+        if kinds.contains(.entreprise) { return .entreprise }
+        return kinds.first
     }
 
     /// Hours per day across the current week, for the bar chart.
