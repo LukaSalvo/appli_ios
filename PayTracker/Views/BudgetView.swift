@@ -20,6 +20,12 @@ struct BudgetView: View {
 
     @Query(sort: \Expense.createdAt) private var expenses: [Expense]
 
+    @Query(sort: \VariableExpense.date, order: .reverse) private var variableExpenses: [VariableExpense]
+
+    @State private var showingAddVariable = false
+    @State private var monthlyText: String = ""
+    @State private var isWriting: Bool = false
+
     private var payMode: PayMode { PayMode(rawValue: payModeRaw) ?? .hourly }
 
     // MARK: - Derived figures
@@ -57,11 +63,23 @@ struct BudgetView: View {
         expenses.reduce(0) { $0 + $1.amount }
     }
 
+    /// One-off spending dated within the current calendar month.
+    private var variableThisMonth: [VariableExpense] {
+        let cal = Calendar.current
+        guard let month = cal.dateInterval(of: .month, for: .now) else { return [] }
+        return variableExpenses.filter { month.contains($0.date) }
+    }
+
+    private var totalVariable: Double {
+        variableThisMonth.reduce(0) { $0 + $1.amount }
+    }
+
     private var summary: BudgetSummary {
         BudgetSummary(
             salaryIncome: salaryIncome,
             mealTicketBenefit: mealConfig.employerBenefit,
-            totalExpenses: totalExpenses
+            totalExpenses: totalExpenses,
+            variableExpenses: totalVariable
         )
     }
 
@@ -85,10 +103,12 @@ struct BudgetView: View {
                 VStack(spacing: 20) {
                     balanceCard
                     ringCard
+                    summaryCard
                     incomeCard
                     if mealTicketsEnabled {
                         mealTicketCard
                     }
+                    variableCard
                     expensesCard
                 }
                 .padding()
@@ -97,6 +117,65 @@ struct BudgetView: View {
             .navigationTitle("Budget")
             .sheet(isPresented: $showingEditBalance) {
                 EditBalanceView(balance: $currentBalance)
+            }
+            .sheet(isPresented: $showingAddVariable) {
+                AddVariableExpenseView()
+            }
+            .onAppear { if monthlyText.isEmpty { regenerateSummary() } }
+        }
+    }
+
+    // MARK: - Monthly summary (AI + fallback)
+
+    private var summaryCard: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    sectionHeader("Bilan du mois", systemImage: "text.badge.checkmark", tint: .appAccent)
+                    Spacer()
+                    Button(action: regenerateSummary) {
+                        if isWriting {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(isWriting)
+                    .accessibilityLabel("Régénérer le bilan")
+                }
+                Text(monthlyText.isEmpty ? "…" : monthlyText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// The category with the highest total this month (fixed + variable).
+    private var topCategoryName: String? {
+        var totals: [ExpenseCategory: Double] = [:]
+        for e in expenses { totals[e.category, default: 0] += e.amount }
+        for e in variableThisMonth { totals[e.category, default: 0] += e.amount }
+        return totals.max { $0.value < $1.value }?.key.rawValue
+    }
+
+    private func regenerateSummary() {
+        guard !isWriting else { return }
+        isWriting = true
+        let input = MonthlySummary.Input(
+            monthName: Date().formatted(.dateTime.month(.wide)),
+            income: summary.totalIncome,
+            spending: summary.totalSpending,
+            remaining: summary.remaining,
+            topCategory: topCategoryName,
+            overtimeHours: 0
+        )
+        Task {
+            let text = await MonthlySummary.generate(input)
+            await MainActor.run {
+                monthlyText = text
+                isWriting = false
             }
         }
     }
@@ -147,7 +226,7 @@ struct BudgetView: View {
                 )
                 HStack(spacing: 24) {
                     legend(color: .moneyGood, label: "Revenus", value: summary.totalIncome)
-                    legend(color: .moneyOut, label: "Dépenses fixes", value: summary.totalExpenses)
+                    legend(color: .moneyOut, label: "Dépenses", value: summary.totalSpending)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -178,6 +257,55 @@ struct BudgetView: View {
                 line("Payé par l'employeur (\(Int(mealTicketEmployerPct)) %)",
                      Money.string(mealConfig.employerBenefit))
                 line("Votre part", Money.string(mealConfig.employeeCost))
+            }
+        }
+    }
+
+    private var variableCard: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    sectionHeader("Dépenses du mois", systemImage: "cart.fill", tint: .moneyOut)
+                    Spacer()
+                    NavigationLink {
+                        VariableExpensesView()
+                    } label: {
+                        Text("Gérer").font(.subheadline.bold())
+                    }
+                }
+                if variableThisMonth.isEmpty {
+                    Text("Notez vos achats du quotidien pour voir votre reste à vivre en temps réel.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(variableThisMonth.prefix(5)) { expense in
+                        HStack {
+                            Image(systemName: expense.category.systemImage)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 24)
+                            Text(expense.name)
+                            Spacer()
+                            Text(Money.string(expense.amount))
+                                .fontWeight(.semibold)
+                                .monospacedDigit()
+                        }
+                        .font(.subheadline)
+                    }
+                    if variableThisMonth.count > 5 {
+                        Text("+ \(variableThisMonth.count - 5) autres")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Divider()
+                    line("Total du mois", Money.string(totalVariable), bold: true)
+                }
+                Button {
+                    showingAddVariable = true
+                } label: {
+                    Label("Ajouter une dépense", systemImage: "plus.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .padding(.top, 2)
             }
         }
     }
@@ -258,5 +386,5 @@ struct BudgetView: View {
 
 #Preview {
     BudgetView()
-        .modelContainer(for: [WorkSession.self, Benefit.self, Expense.self], inMemory: true)
+        .modelContainer(for: [WorkSession.self, Benefit.self, Expense.self, VariableExpense.self], inMemory: true)
 }

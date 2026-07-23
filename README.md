@@ -94,6 +94,21 @@ fichier projet binaire dans git.
 3. Ouvrir `PayTracker.xcodeproj` dans Xcode 15+
 4. Sélectionner un simulateur iOS 17+ et lancer (⌘R)
 
+## Intégration continue (CI)
+
+Le workflow GitHub Actions `.github/workflows/ci.yml` se déclenche à chaque
+`push` et `pull request`. Aucun secret requis.
+- **Sécurité** : scan de secrets (Gitleaks) + refus de tout fichier de
+  signature sensible versionné (`.p12`, `.p8`, `.mobileprovision`, `.env`…) +
+  contrôle du `.gitignore`.
+- **Continuité** : génération XcodeGen → build sur simulateur iOS → tests
+  (ignorés proprement tant qu'aucun test n'existe).
+
+> Installer l'app sur l'iPhone se fait manuellement depuis Xcode avec un
+> Apple ID gratuit (`⌘R`, à renouveler tous les 7 jours), ou via AltStore /
+> SideStore. Une mise à jour automatique par pipeline (TestFlight) nécessite
+> un compte Apple Developer payant et n'est donc pas incluse ici.
+
 ## Pistes d'évolution
 
 - Majorations (nuit, dimanche, jours fériés) en % du taux horaire

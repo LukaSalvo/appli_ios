@@ -15,6 +15,13 @@ struct SettingsView: View {
     @AppStorage("appearanceMode") private var appearanceModeRaw: String = AppearanceMode.system.rawValue
     @AppStorage("currentBalance") private var currentBalance: Double = 0
 
+    @AppStorage("forgottenSessionHours") private var forgottenSessionHours: Double = 12
+
+    @AppStorage("overtimeEnabled") private var overtimeEnabled: Bool = false
+    @AppStorage("weeklyContractHours") private var weeklyContractHours: Double = 35
+    @AppStorage("workingDaysPerWeek") private var workingDaysPerWeek: Int = 5
+    @AppStorage("flexibleCompany") private var flexibleCompany: Bool = false
+
     @Query(sort: \Benefit.createdAt) private var benefits: [Benefit]
     @Query(sort: \WorkSession.startDate) private var allSessions: [WorkSession]
     @Query(sort: \Expense.createdAt) private var allExpenses: [Expense]
@@ -61,6 +68,16 @@ struct SettingsView: View {
 
                     if payMode == .hourly {
                         amountRow(label: "Taux horaire net", value: $hourlyRate)
+                        Stepper(value: $forgottenSessionHours, in: 0...24, step: 1) {
+                            HStack {
+                                Text("Rappel de session oubliée")
+                                Spacer()
+                                Text(forgottenSessionHours == 0
+                                     ? "Désactivé"
+                                     : "après \(Int(forgottenSessionHours)) h")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     } else {
                         amountRow(label: "Salaire mensuel net", value: $monthlySalary)
                         Stepper(value: $daysWorkedPerMonth, in: 0...31) {
@@ -112,6 +129,32 @@ struct SettingsView: View {
                     Text("Tickets restaurant")
                 } footer: {
                     Text("La part payée par l'employeur est comptée comme un avantage dans votre budget.")
+                }
+
+                // Overtime
+                Section {
+                    Toggle("Suivre les heures supp", isOn: $overtimeEnabled)
+                    if overtimeEnabled {
+                        Stepper(value: $weeklyContractHours, in: 0...60, step: 0.5) {
+                            HStack {
+                                Text("Heures / semaine (contrat)")
+                                Spacer()
+                                Text(formatHours(weeklyContractHours)).foregroundStyle(.secondary)
+                            }
+                        }
+                        Stepper(value: $workingDaysPerWeek, in: 1...7) {
+                            HStack {
+                                Text("Jours travaillés / semaine")
+                                Spacer()
+                                Text("\(workingDaysPerWeek)").foregroundStyle(.secondary)
+                            }
+                        }
+                        Toggle("Entreprise flexible", isOn: $flexibleCompany)
+                    }
+                } header: {
+                    Text("Heures supplémentaires")
+                } footer: {
+                    Text("« Entreprise flexible » : seules les heures au-delà du contrat hebdomadaire comptent, quelle que soit la répartition (ex. 7 h 15 du lundi au jeudi + 6 h le vendredi = 35 h, sans heures supp). Sinon, chaque jour au-delà de sa part (contrat ÷ jours) compte.")
                 }
 
                 // Expenses

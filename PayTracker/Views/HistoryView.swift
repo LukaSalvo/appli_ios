@@ -12,6 +12,12 @@ struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var period: StatsPeriod = .week
     @State private var sessionToDelete: WorkSession?
+    @State private var sessionToEdit: WorkSession?
+
+    @AppStorage("overtimeEnabled") private var overtimeEnabled: Bool = false
+    @AppStorage("weeklyContractHours") private var weeklyContractHours: Double = 35
+    @AppStorage("workingDaysPerWeek") private var workingDaysPerWeek: Int = 5
+    @AppStorage("flexibleCompany") private var flexibleCompany: Bool = false
 
     private var stats: WorkStats { WorkStats(sessions: pastSessions) }
 
@@ -20,6 +26,9 @@ struct HistoryView: View {
             ScrollView {
                 VStack(spacing: 16) {
                     hoursCard
+                    if overtimeEnabled {
+                        overtimeCard
+                    }
                     chartCard
                     sessionsCard
                 }
@@ -44,6 +53,9 @@ struct HistoryView: View {
                 Button("Annuler", role: .cancel) { sessionToDelete = nil }
             } message: { session in
                 Text("\(session.startDate.formatted(date: .abbreviated, time: .omitted)) · \(formatHours(session.duration() / 3600))")
+            }
+            .sheet(item: $sessionToEdit) { session in
+                AddSessionView(session: session)
             }
         }
     }
@@ -78,6 +90,47 @@ struct HistoryView: View {
         }
     }
 
+    private var overtimeCard: some View {
+        let worked = stats.weeklyTotal
+        let overtime = stats.weeklyOvertime(
+            weeklyContract: weeklyContractHours,
+            daysPerWeek: workingDaysPerWeek,
+            flexible: flexibleCompany
+        )
+        return Card {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack {
+                    Label("Heures supp (semaine)", systemImage: "clock.badge.exclamationmark")
+                        .font(.headline)
+                        .foregroundStyle(Color.appAccent)
+                    Spacer()
+                    if flexibleCompany {
+                        Text("Flexible")
+                            .font(.caption2.bold())
+                            .padding(.horizontal, 8).padding(.vertical, 3)
+                            .background(Color.gold.opacity(0.18), in: Capsule())
+                            .foregroundStyle(Color.goldInk)
+                    }
+                }
+                HStack {
+                    metric(icon: "calendar", label: "Contrat",
+                           value: formatHours(weeklyContractHours))
+                    Divider().frame(height: 34)
+                    metric(icon: "sum", label: "Travaillé", value: formatHours(worked))
+                    Divider().frame(height: 34)
+                    metric(icon: "plus.circle", label: "Supp",
+                           value: formatHours(overtime),
+                           tint: overtime > 0 ? .moneyOut : .secondary)
+                }
+                Text(overtime > 0
+                     ? "Vous avez dépassé votre contrat de \(formatHours(overtime)) cette semaine."
+                     : "Vous êtes dans votre contrat cette semaine.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+
     private var chartCard: some View {
         Card {
             VStack(alignment: .leading, spacing: 12) {
@@ -103,30 +156,42 @@ struct HistoryView: View {
                     let recent = Array(pastSessions.prefix(12))
                     ForEach(Array(recent.enumerated()), id: \.offset) { index, session in
                         HStack(spacing: 10) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                HStack {
-                                    Text(session.startDate, style: .date)
-                                        .font(.subheadline.bold())
-                                    Spacer()
-                                    Text(Money.string(session.totalPay()))
-                                        .font(.subheadline.bold())
-                                        .foregroundStyle(Color.moneyGood)
-                                        .monospacedDigit()
-                                }
-                                HStack(spacing: 6) {
-                                    Image(systemName: "clock")
-                                    Text(formatHours(session.duration() / 3600))
-                                    Text("·")
-                                    Text(timeRange(session))
-                                    if session.breakDuration > 0 {
-                                        Text("·")
-                                        Image(systemName: "pause.circle")
-                                        Text(formatHours(session.breakDuration / 3600))
+                            Button {
+                                sessionToEdit = session
+                            } label: {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack {
+                                        Text(session.startDate, style: .date)
+                                            .font(.subheadline.bold())
+                                        Spacer()
+                                        Text(Money.string(session.totalPay()))
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(Color.moneyGood)
+                                            .monospacedDigit()
                                     }
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "clock")
+                                        Text(formatHours(session.duration() / 3600))
+                                        Text("·")
+                                        Text(timeRange(session))
+                                        if session.breakDuration > 0 {
+                                            Text("·")
+                                            Image(systemName: "pause.circle")
+                                            Text(formatHours(session.breakDuration / 3600))
+                                        }
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                                 }
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Modifier la session")
+                            .accessibilityHint("Touchez pour corriger les horaires")
+
                             Button {
                                 sessionToDelete = session
                             } label: {
@@ -156,6 +221,7 @@ struct HistoryView: View {
         case .day: return "travaillées aujourd'hui"
         case .week: return "travaillées cette semaine"
         case .month: return "travaillées ce mois-ci"
+        case .year: return "travaillées cette année"
         }
     }
 
