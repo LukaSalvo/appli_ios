@@ -19,6 +19,9 @@ struct AddSessionView: View {
     @State private var departure: Date
     @State private var breakMinutes: Int
 
+    @State private var naturalText: String = ""
+    @State private var isParsing: Bool = false
+
     init(session: WorkSession? = nil) {
         self.editing = session
         if let s = session {
@@ -58,6 +61,27 @@ struct AddSessionView: View {
     var body: some View {
         NavigationStack {
             Form {
+                Section {
+                    HStack {
+                        TextField("Ex : 9h-17h, 1h de pause hier", text: $naturalText)
+                            .submitLabel(.done)
+                            .onSubmit { runSmartParse() }
+                        Button(action: runSmartParse) {
+                            if isParsing {
+                                ProgressView()
+                            } else {
+                                Image(systemName: "wand.and.stars")
+                            }
+                        }
+                        .buttonStyle(.borderless)
+                        .disabled(naturalText.trimmingCharacters(in: .whitespaces).isEmpty || isParsing)
+                    }
+                } header: {
+                    Text("Saisie rapide")
+                } footer: {
+                    Text(smartFooter)
+                }
+
                 Section("Journée") {
                     DatePicker("Date", selection: $day, displayedComponents: .date)
                 }
@@ -116,6 +140,31 @@ struct AddSessionView: View {
             modelContext.insert(session)
         }
         dismiss()
+    }
+
+    // MARK: - Smart entry
+
+    private var smartFooter: String {
+        if ExpenseTextParser.isOnDeviceModelAvailable {
+            return "Analysé par l'IA d'Apple, directement sur votre iPhone — rien n'est envoyé en ligne."
+        }
+        return "Reconnaît les horaires et la pause. L'analyse est améliorée par l'IA d'Apple sur iPhone compatible (iOS 26)."
+    }
+
+    private func runSmartParse() {
+        let text = naturalText.trimmingCharacters(in: .whitespaces)
+        guard !text.isEmpty, !isParsing else { return }
+        isParsing = true
+        Task {
+            let parsed = await SessionTextParser.parse(text)
+            await MainActor.run {
+                day = parsed.day
+                arrival = parsed.arrival
+                departure = parsed.departure
+                breakMinutes = parsed.breakMinutes
+                isParsing = false
+            }
+        }
     }
 
     // MARK: - UI helpers
