@@ -12,6 +12,7 @@ struct HistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var period: StatsPeriod = .week
     @State private var sessionToDelete: WorkSession?
+    @State private var sessionToEdit: WorkSession?
 
     private var stats: WorkStats { WorkStats(sessions: pastSessions) }
 
@@ -43,6 +44,9 @@ struct HistoryView: View {
                 Button("Annuler", role: .cancel) { sessionToDelete = nil }
             } message: { session in
                 Text("\(session.startDate.formatted(date: .abbreviated, time: .omitted)) · \(formatHours(session.duration() / 3600))")
+            }
+            .sheet(item: $sessionToEdit) { session in
+                AddSessionView(session: session)
             }
         }
     }
@@ -105,30 +109,42 @@ struct HistoryView: View {
                     let recent = Array(pastSessions.prefix(12))
                     ForEach(Array(recent.enumerated()), id: \.offset) { index, session in
                         HStack(spacing: 10) {
-                            VStack(alignment: .leading, spacing: 3) {
-                                HStack {
-                                    Text(session.startDate, style: .date)
-                                        .font(.subheadline.bold())
-                                    Spacer()
-                                    Text(Money.string(session.totalPay()))
-                                        .font(.subheadline.bold())
-                                        .foregroundStyle(Color.moneyGood)
-                                        .monospacedDigit()
-                                }
-                                HStack(spacing: 6) {
-                                    Image(systemName: "clock")
-                                    Text(formatHours(session.duration() / 3600))
-                                    Text("·")
-                                    Text(timeRange(session))
-                                    if session.breakDuration > 0 {
-                                        Text("·")
-                                        Image(systemName: "pause.circle")
-                                        Text(formatHours(session.breakDuration / 3600))
+                            Button {
+                                sessionToEdit = session
+                            } label: {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    HStack {
+                                        Text(session.startDate, style: .date)
+                                            .font(.subheadline.bold())
+                                        Spacer()
+                                        Text(Money.string(session.totalPay()))
+                                            .font(.subheadline.bold())
+                                            .foregroundStyle(Color.moneyGood)
+                                            .monospacedDigit()
                                     }
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "clock")
+                                        Text(formatHours(session.duration() / 3600))
+                                        Text("·")
+                                        Text(timeRange(session))
+                                        if session.breakDuration > 0 {
+                                            Text("·")
+                                            Image(systemName: "pause.circle")
+                                            Text(formatHours(session.breakDuration / 3600))
+                                        }
+                                        Image(systemName: "chevron.right")
+                                            .font(.caption2)
+                                            .foregroundStyle(.tertiary)
+                                    }
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                                 }
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
+                                .contentShape(Rectangle())
                             }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Modifier la session")
+                            .accessibilityHint("Touchez pour corriger les horaires")
+
                             Button {
                                 sessionToDelete = session
                             } label: {

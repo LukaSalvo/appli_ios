@@ -21,5 +21,5 @@ struct ContentView: View {
 
 #Preview {
     ContentView()
-        .modelContainer(for: [WorkSession.self, Benefit.self, Expense.self], inMemory: true)
+        .modelContainer(for: [WorkSession.self, Benefit.self, Expense.self, VariableExpense.self], inMemory: true)
 }

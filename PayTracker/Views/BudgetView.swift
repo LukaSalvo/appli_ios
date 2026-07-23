@@ -16,6 +16,10 @@ struct BudgetView: View {
 
     @Query(sort: \Expense.createdAt) private var expenses: [Expense]
 
+    @Query(sort: \VariableExpense.date, order: .reverse) private var variableExpenses: [VariableExpense]
+
+    @State private var showingAddVariable = false
+
     private var payMode: PayMode { PayMode(rawValue: payModeRaw) ?? .hourly }
 
     // MARK: - Derived figures
@@ -53,11 +57,23 @@ struct BudgetView: View {
         expenses.reduce(0) { $0 + $1.amount }
     }
 
+    /// One-off spending dated within the current calendar month.
+    private var variableThisMonth: [VariableExpense] {
+        let cal = Calendar.current
+        guard let month = cal.dateInterval(of: .month, for: .now) else { return [] }
+        return variableExpenses.filter { month.contains($0.date) }
+    }
+
+    private var totalVariable: Double {
+        variableThisMonth.reduce(0) { $0 + $1.amount }
+    }
+
     private var summary: BudgetSummary {
         BudgetSummary(
             salaryIncome: salaryIncome,
             mealTicketBenefit: mealConfig.employerBenefit,
-            totalExpenses: totalExpenses
+            totalExpenses: totalExpenses,
+            variableExpenses: totalVariable
         )
     }
 
@@ -70,12 +86,16 @@ struct BudgetView: View {
                     if mealTicketsEnabled {
                         mealTicketCard
                     }
+                    variableCard
                     expensesCard
                 }
                 .padding()
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Budget")
+            .sheet(isPresented: $showingAddVariable) {
+                AddVariableExpenseView()
+            }
         }
     }
 
@@ -91,7 +111,7 @@ struct BudgetView: View {
                 )
                 HStack(spacing: 24) {
                     legend(color: .moneyGood, label: "Revenus", value: summary.totalIncome)
-                    legend(color: .moneyOut, label: "Dépenses fixes", value: summary.totalExpenses)
+                    legend(color: .moneyOut, label: "Dépenses", value: summary.totalSpending)
                 }
             }
             .frame(maxWidth: .infinity)
@@ -122,6 +142,55 @@ struct BudgetView: View {
                 line("Payé par l'employeur (\(Int(mealTicketEmployerPct)) %)",
                      Money.string(mealConfig.employerBenefit))
                 line("Votre part", Money.string(mealConfig.employeeCost))
+            }
+        }
+    }
+
+    private var variableCard: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    sectionHeader("Dépenses du mois", systemImage: "cart.fill", tint: .moneyOut)
+                    Spacer()
+                    NavigationLink {
+                        VariableExpensesView()
+                    } label: {
+                        Text("Gérer").font(.subheadline.bold())
+                    }
+                }
+                if variableThisMonth.isEmpty {
+                    Text("Notez vos achats du quotidien pour voir votre reste à vivre en temps réel.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(variableThisMonth.prefix(5)) { expense in
+                        HStack {
+                            Image(systemName: expense.category.systemImage)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 24)
+                            Text(expense.name)
+                            Spacer()
+                            Text(Money.string(expense.amount))
+                                .fontWeight(.semibold)
+                                .monospacedDigit()
+                        }
+                        .font(.subheadline)
+                    }
+                    if variableThisMonth.count > 5 {
+                        Text("+ \(variableThisMonth.count - 5) autres")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    Divider()
+                    line("Total du mois", Money.string(totalVariable), bold: true)
+                }
+                Button {
+                    showingAddVariable = true
+                } label: {
+                    Label("Ajouter une dépense", systemImage: "plus.circle.fill")
+                        .font(.subheadline.weight(.semibold))
+                }
+                .padding(.top, 2)
             }
         }
     }
@@ -202,5 +271,5 @@ struct BudgetView: View {
 
 #Preview {
     BudgetView()
-        .modelContainer(for: [WorkSession.self, Benefit.self, Expense.self], inMemory: true)
+        .modelContainer(for: [WorkSession.self, Benefit.self, Expense.self, VariableExpense.self], inMemory: true)
 }

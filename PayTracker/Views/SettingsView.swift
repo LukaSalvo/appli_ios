@@ -11,6 +11,8 @@ struct SettingsView: View {
     @AppStorage("mealTicketValue") private var mealTicketValue: Double = 9.0
     @AppStorage("mealTicketEmployerPct") private var mealTicketEmployerPct: Double = 60
 
+    @AppStorage("forgottenSessionHours") private var forgottenSessionHours: Double = 12
+
     @Query(sort: \Benefit.createdAt) private var benefits: [Benefit]
     @Environment(\.modelContext) private var modelContext
 
@@ -32,6 +34,16 @@ struct SettingsView: View {
 
                     if payMode == .hourly {
                         amountRow(label: "Taux horaire net", value: $hourlyRate)
+                        Stepper(value: $forgottenSessionHours, in: 0...24, step: 1) {
+                            HStack {
+                                Text("Rappel de session oubliée")
+                                Spacer()
+                                Text(forgottenSessionHours == 0
+                                     ? "Désactivé"
+                                     : "après \(Int(forgottenSessionHours)) h")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     } else {
                         amountRow(label: "Salaire mensuel net", value: $monthlySalary)
                         Stepper(value: $daysWorkedPerMonth, in: 0...31) {

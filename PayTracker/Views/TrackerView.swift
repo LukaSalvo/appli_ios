@@ -7,6 +7,7 @@ struct TrackerView: View {
     @AppStorage("payMode") private var payModeRaw: String = PayMode.hourly.rawValue
     @AppStorage("hourlyRate") private var hourlyRate: Double = 11.65
     @AppStorage("monthlySalary") private var monthlySalary: Double = 1800
+    @AppStorage("forgottenSessionHours") private var forgottenSessionHours: Double = 12
 
     @Query(filter: #Predicate<WorkSession> { $0.endDate == nil })
     private var activeSessions: [WorkSession]
@@ -63,6 +64,7 @@ struct TrackerView: View {
             pauseCard(for: session)
             Button(role: .destructive) {
                 session.endDate = Date()
+                SessionReminder.cancel()
             } label: {
                 Label("Terminer la session", systemImage: "stop.circle.fill")
                     .font(.headline)
@@ -252,6 +254,10 @@ struct TrackerView: View {
             fixedBenefitsSnapshot: enabledFixedTotal
         )
         modelContext.insert(session)
+
+        // Nudge the user later if they forget to end this session.
+        SessionReminder.requestAuthorization()
+        SessionReminder.schedule(hours: forgottenSessionHours, startedAt: session.startDate)
     }
 
     private func formattedDuration(_ interval: TimeInterval) -> String {
