@@ -42,6 +42,10 @@ final class WorkSession {
         set { kindRaw = newValue.rawValue }
     }
 
+    /// The calendar import that created this session, if any — nil for
+    /// sessions logged by hand. Deleting the import cascades to this session.
+    var importedCalendar: ImportedCalendar?
+
     init(
         startDate: Date,
         endDate: Date? = nil,
@@ -49,7 +53,8 @@ final class WorkSession {
         hourlyRateSnapshot: Double,
         perHourBenefitsSnapshot: Double,
         fixedBenefitsSnapshot: Double,
-        kind: SessionKind = .entreprise
+        kind: SessionKind = .entreprise,
+        importedCalendar: ImportedCalendar? = nil
     ) {
         self.startDate = startDate
         self.endDate = endDate
@@ -58,6 +63,7 @@ final class WorkSession {
         self.perHourBenefitsSnapshot = perHourBenefitsSnapshot
         self.fixedBenefitsSnapshot = fixedBenefitsSnapshot
         self.kindRaw = kind.rawValue
+        self.importedCalendar = importedCalendar
     }
 
     var isActive: Bool { endDate == nil }

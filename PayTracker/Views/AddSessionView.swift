@@ -21,8 +21,9 @@ struct AddSessionView: View {
 
     @State private var naturalText: String = ""
     @State private var isParsing: Bool = false
+    @StateObject private var speech = SpeechRecognizer()
 
-    init(session: WorkSession? = nil) {
+    init(session: WorkSession? = nil, defaultDay: Date = .now) {
         self.editing = session
         if let s = session {
             let cal = Calendar.current
@@ -31,9 +32,9 @@ struct AddSessionView: View {
             _departure = State(initialValue: s.endDate ?? s.startDate)
             _breakMinutes = State(initialValue: Int(s.breakDuration / 60))
         } else {
-            _day = State(initialValue: .now)
-            _arrival = State(initialValue: defaultTime(hour: 9))
-            _departure = State(initialValue: defaultTime(hour: 17))
+            _day = State(initialValue: Calendar.current.startOfDay(for: defaultDay))
+            _arrival = State(initialValue: defaultTime(hour: 9, on: defaultDay))
+            _departure = State(initialValue: defaultTime(hour: 17, on: defaultDay))
             _breakMinutes = State(initialValue: 60)
         }
     }
@@ -66,6 +67,12 @@ struct AddSessionView: View {
                         TextField("Ex : 9h-17h, 1h de pause hier", text: $naturalText)
                             .submitLabel(.done)
                             .onSubmit { runSmartParse() }
+                        Button(action: speech.toggle) {
+                            Image(systemName: speech.isRecording ? "mic.fill" : "mic")
+                                .foregroundStyle(speech.isRecording ? Color.moneyDanger : Color.appAccent)
+                                .symbolEffect(.pulse, isActive: speech.isRecording)
+                        }
+                        .buttonStyle(.borderless)
                         Button(action: runSmartParse) {
                             if isParsing {
                                 ProgressView()
@@ -75,6 +82,17 @@ struct AddSessionView: View {
                         }
                         .buttonStyle(.borderless)
                         .disabled(naturalText.trimmingCharacters(in: .whitespaces).isEmpty || isParsing)
+                    }
+                    .onChange(of: speech.transcript) { _, newValue in
+                        naturalText = newValue
+                    }
+                    .onChange(of: speech.isRecording) { wasRecording, isRecording in
+                        if wasRecording, !isRecording, !naturalText.trimmingCharacters(in: .whitespaces).isEmpty {
+                            runSmartParse()
+                        }
+                    }
+                    if let error = speech.errorMessage {
+                        Text(error).font(.caption2).foregroundStyle(Color.moneyDanger)
                     }
                 } header: {
                     Text("Saisie rapide")
@@ -145,10 +163,13 @@ struct AddSessionView: View {
     // MARK: - Smart entry
 
     private var smartFooter: String {
+        let base: String
         if ExpenseTextParser.isOnDeviceModelAvailable {
-            return "Analysé par l'IA d'Apple, directement sur votre iPhone — rien n'est envoyé en ligne."
+            base = "Analysé par l'IA d'Apple, directement sur votre iPhone — rien n'est envoyé en ligne."
+        } else {
+            base = "Reconnaît les horaires et la pause. L'analyse est améliorée par l'IA d'Apple sur iPhone compatible (iOS 26)."
         }
-        return "Reconnaît les horaires et la pause. L'analyse est améliorée par l'IA d'Apple sur iPhone compatible (iOS 26)."
+        return base + " Appuyez sur le micro pour décrire votre journée à voix haute — ou dites « Dis Siri, enregistre ma journée »."
     }
 
     private func runSmartParse() {
@@ -206,8 +227,8 @@ struct AddSessionView: View {
     }
 }
 
-private func defaultTime(hour: Int) -> Date {
-    Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: .now) ?? .now
+private func defaultTime(hour: Int, on day: Date = .now) -> Date {
+    Calendar.current.date(bySettingHour: hour, minute: 0, second: 0, of: day) ?? day
 }
 
 #Preview {
