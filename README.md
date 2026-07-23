@@ -94,6 +94,31 @@ fichier projet binaire dans git.
 3. Ouvrir `PayTracker.xcodeproj` dans Xcode 15+
 4. Sélectionner un simulateur iOS 17+ et lancer (⌘R)
 
+## Intégration continue (CI/CD)
+
+Deux workflows GitHub Actions sont fournis dans `.github/workflows/` :
+
+### `ci.yml` — Sécurité & continuité (actif immédiatement)
+Se déclenche à chaque `push` et `pull request`. Aucun secret requis.
+- **Sécurité** : scan de secrets (Gitleaks) + refus de tout fichier de
+  signature sensible versionné (`.p12`, `.p8`, `.mobileprovision`, `.env`…) +
+  contrôle du `.gitignore`.
+- **Continuité** : génération XcodeGen → build sur simulateur iOS → tests
+  (ignorés proprement tant qu'aucun test n'existe).
+
+### `deploy-testflight.yml` — Mise à jour sur iPhone (à activer)
+Se déclenche sur `push` vers `main`. Construit l'app signée et l'envoie sur
+**TestFlight** : tu reçois alors une notification sur ton iPhone et la mise à
+jour s'installe en un tap. Apple n'autorise pas l'installation OTA silencieuse
+pour une app grand public — c'est le plus proche possible d'une « mise à jour
+directe ».
+
+Le workflow reste **inerte tant que les secrets Apple ne sont pas configurés**
+(il s'arrête proprement). Prérequis : un **compte Apple Developer payant**, une
+clé API App Store Connect, un certificat de distribution et un provisioning
+profile. La liste exacte des secrets à créer est documentée en tête du fichier
+`deploy-testflight.yml`.
+
 ## Pistes d'évolution
 
 - Majorations (nuit, dimanche, jours fériés) en % du taux horaire

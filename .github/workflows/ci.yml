@@ -1,0 +1,125 @@
+name: CI – Sécurité & Continuité
+
+# Pipeline de vérification qui tourne à chaque push et pull request.
+# Objectif : garantir que le code compile, que les tests passent et
+# qu'aucun secret ou fichier sensible ne se glisse dans le dépôt.
+# Aucun secret Apple n'est requis : ce workflow fonctionne tel quel.
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+  workflow_dispatch: {}
+
+concurrency:
+  # Annule les runs précédents encore en cours sur la même branche.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1) SÉCURITÉ : on cherche des secrets/fichiers sensibles avant tout build.
+  # ---------------------------------------------------------------------------
+  securite:
+    name: Sécurité (secrets & fichiers sensibles)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code (historique complet pour le scan)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Scan de secrets (Gitleaks)
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Refuser les fichiers sensibles versionnés
+        run: |
+          echo "Vérification des fichiers qui ne devraient jamais être commités…"
+          # Motifs de fichiers de signature / secrets Apple à ne jamais versionner.
+          MOTIFS='\.p12$|\.p8$|\.mobileprovision$|\.cer$|\.certSigningRequest$|GoogleService-Info\.plist$|\.env$'
+          FICHIERS=$(git ls-files | grep -E "$MOTIFS" || true)
+          if [ -n "$FICHIERS" ]; then
+            echo "::error::Fichiers sensibles détectés dans le dépôt :"
+            echo "$FICHIERS"
+            exit 1
+          fi
+          echo "OK : aucun fichier sensible versionné."
+
+      - name: Vérifier que le .gitignore protège les artefacts Xcode
+        run: |
+          for motif in "DerivedData/" "*.xcodeproj" "xcuserdata/"; do
+            if ! grep -q -- "$motif" .gitignore; then
+              echo "::warning::Le motif '$motif' est absent du .gitignore."
+            fi
+          done
+          echo "Contrôle .gitignore terminé."
+
+  # ---------------------------------------------------------------------------
+  # 2) CONTINUITÉ : le projet doit se générer, compiler et passer les tests.
+  #    Sur runner macOS car il faut Xcode + le SDK iOS.
+  # ---------------------------------------------------------------------------
+  build_et_tests:
+    name: Build & Tests (iOS)
+    runs-on: macos-14
+    needs: securite
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Sélectionner Xcode 16
+        run: sudo xcode-select -switch /Applications/Xcode_16.app
+
+      - name: Installer XcodeGen & xcbeautify
+        run: brew install xcodegen xcbeautify
+
+      - name: Générer le projet Xcode (project.yml → .xcodeproj)
+        run: xcodegen generate
+
+      - name: Choisir un simulateur iOS disponible
+        id: sim
+        run: |
+          # Récupère un iPhone disponible pour ne pas coder en dur un modèle
+          # qui pourrait disparaître d'une image de runner à l'autre.
+          DEVICE=$(xcrun simctl list devices available | grep -m1 -E "iPhone" | sed -E 's/ \(.*//' | xargs)
+          if [ -z "$DEVICE" ]; then DEVICE="iPhone 15"; fi
+          echo "Simulateur choisi : $DEVICE"
+          echo "device=$DEVICE" >> "$GITHUB_OUTPUT"
+
+      - name: Compiler l'application (garantit la continuité du build)
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project PayTracker.xcodeproj \
+            -scheme PayTracker \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.device }}" \
+            CODE_SIGNING_ALLOWED=NO \
+            | xcbeautify || xcodebuild build \
+            -project PayTracker.xcodeproj \
+            -scheme PayTracker \
+            -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.device }}" \
+            CODE_SIGNING_ALLOWED=NO
+
+      - name: Lancer les tests (s'il en existe)
+        run: |
+          set -o pipefail
+          # Ne casse pas le build si aucun test n'est encore défini.
+          if xcodebuild test \
+              -project PayTracker.xcodeproj \
+              -scheme PayTracker \
+              -destination "platform=iOS Simulator,name=${{ steps.sim.outputs.device }}" \
+              CODE_SIGNING_ALLOWED=NO 2>&1 | tee test.log | xcbeautify; then
+            echo "Tests exécutés avec succès."
+          else
+            if grep -q "does not contain any test" test.log || grep -q "no tests" test.log; then
+              echo "::notice::Aucun test défini pour le moment — étape ignorée."
+            else
+              echo "::error::Des tests ont échoué."
+              exit 1
+            fi
+          fi
