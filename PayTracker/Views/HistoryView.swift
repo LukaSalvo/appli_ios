@@ -223,6 +223,7 @@ struct HistoryView: View {
         case .day: return "travaillées aujourd'hui"
         case .week: return "travaillées cette semaine"
         case .month: return "travaillées ce mois-ci"
+        case .year: return "travaillées cette année"
         }
     }
 

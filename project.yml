@@ -19,6 +19,8 @@ targets:
           - UIInterfaceOrientationPortrait
         CFBundleDisplayName: "Paie Horaire"
         NSSupportsLiveActivities: true
+        NSCalendarsFullAccessUsageDescription: "L'accès à votre calendrier permet d'importer votre emploi du temps d'alternance (jours d'école et d'entreprise)."
+        NSCalendarsUsageDescription: "L'accès à votre calendrier permet d'importer votre emploi du temps d'alternance (jours d'école et d'entreprise)."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lukasalvo.paytracker
