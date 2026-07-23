@@ -42,7 +42,7 @@ struct AgendaView: View {
                 }
                 .padding()
             }
-            .background(Color(.systemGroupedBackground))
+            .background(Color.appBackground)
             .navigationTitle("Agenda")
             .fileImporter(isPresented: $showingFileImporter, allowedContentTypes: icsTypes) { result in
                 if case .success(let url) = result { importICS(url) }
@@ -60,9 +60,7 @@ struct AgendaView: View {
                 }
                 .pickerStyle(.segmented)
 
-                Text(Money.string(stats.earnings(period)))
-                    .font(.system(size: 40, weight: .heavy, design: .rounded))
-                    .foregroundStyle(LinearGradient.moneyText)
+                HeroAmountText(value: Money.string(stats.earnings(period)), size: 40)
                     .contentTransition(.numericText())
                     .animation(.snappy, value: period)
 
