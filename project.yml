@@ -10,12 +10,14 @@ targets:
     platform: iOS
     sources:
       - PayTracker
+      - Shared
     info:
       properties:
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
         CFBundleDisplayName: "Paie Horaire"
+        NSSupportsLiveActivities: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lukasalvo.paytracker
@@ -26,3 +28,27 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+    dependencies:
+      - target: PayTrackerWidgets
+        embed: true
+
+  PayTrackerWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - PayTrackerWidgets
+      - Shared
+    info:
+      properties:
+        CFBundleDisplayName: "Paie Horaire"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.lukasalvo.paytracker.widgets
+        PRODUCT_NAME: PayTrackerWidgets
+        SWIFT_VERSION: "5.0"
+        TARGETED_DEVICE_FAMILY: "1"
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        SKIP_INSTALL: YES

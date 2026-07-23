@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import Combine
 
 struct TrackerView: View {
     @Environment(\.modelContext) private var modelContext
@@ -15,6 +16,10 @@ struct TrackerView: View {
     @Query(sort: \Benefit.createdAt) private var benefits: [Benefit]
 
     @State private var showingManualEntry = false
+
+    /// Refreshes the Live Activity's earned amount about once a minute while a
+    /// session is running (the timer itself ticks live in the widget).
+    private let liveActivityTick = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     private var payMode: PayMode { PayMode(rawValue: payModeRaw) ?? .hourly }
     private var activeSession: WorkSession? { activeSessions.first }
@@ -52,6 +57,14 @@ struct TrackerView: View {
             .sheet(isPresented: $showingManualEntry) {
                 AddSessionView()
             }
+            .onReceive(liveActivityTick) { _ in
+                guard let session = activeSession else { return }
+                LiveActivityManager.update(
+                    startDate: session.startDate,
+                    earned: session.totalPay(),
+                    ratePerHour: session.hourlyRateSnapshot + session.perHourBenefitsSnapshot
+                )
+            }
         }
     }
 
@@ -65,6 +78,7 @@ struct TrackerView: View {
             Button(role: .destructive) {
                 session.endDate = Date()
                 SessionReminder.cancel()
+                LiveActivityManager.end()
             } label: {
                 Label("Terminer la session", systemImage: "stop.circle.fill")
                     .font(.headline)
@@ -258,6 +272,13 @@ struct TrackerView: View {
         // Nudge the user later if they forget to end this session.
         SessionReminder.requestAuthorization()
         SessionReminder.schedule(hours: forgottenSessionHours, startedAt: session.startDate)
+
+        // Show the live pay counter on the Lock Screen / Dynamic Island.
+        LiveActivityManager.start(
+            startDate: session.startDate,
+            earned: 0,
+            ratePerHour: session.hourlyRateSnapshot + session.perHourBenefitsSnapshot
+        )
     }
 
     private func formattedDuration(_ interval: TimeInterval) -> String {
