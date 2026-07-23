@@ -13,6 +13,11 @@ struct SettingsView: View {
 
     @AppStorage("forgottenSessionHours") private var forgottenSessionHours: Double = 12
 
+    @AppStorage("overtimeEnabled") private var overtimeEnabled: Bool = false
+    @AppStorage("weeklyContractHours") private var weeklyContractHours: Double = 35
+    @AppStorage("workingDaysPerWeek") private var workingDaysPerWeek: Int = 5
+    @AppStorage("flexibleCompany") private var flexibleCompany: Bool = false
+
     @Query(sort: \Benefit.createdAt) private var benefits: [Benefit]
     @Environment(\.modelContext) private var modelContext
 
@@ -95,6 +100,32 @@ struct SettingsView: View {
                     Text("Tickets restaurant")
                 } footer: {
                     Text("La part payée par l'employeur est comptée comme un avantage dans votre budget.")
+                }
+
+                // Overtime
+                Section {
+                    Toggle("Suivre les heures supp", isOn: $overtimeEnabled)
+                    if overtimeEnabled {
+                        Stepper(value: $weeklyContractHours, in: 0...60, step: 0.5) {
+                            HStack {
+                                Text("Heures / semaine (contrat)")
+                                Spacer()
+                                Text(formatHours(weeklyContractHours)).foregroundStyle(.secondary)
+                            }
+                        }
+                        Stepper(value: $workingDaysPerWeek, in: 1...7) {
+                            HStack {
+                                Text("Jours travaillés / semaine")
+                                Spacer()
+                                Text("\(workingDaysPerWeek)").foregroundStyle(.secondary)
+                            }
+                        }
+                        Toggle("Entreprise flexible", isOn: $flexibleCompany)
+                    }
+                } header: {
+                    Text("Heures supplémentaires")
+                } footer: {
+                    Text("« Entreprise flexible » : seules les heures au-delà du contrat hebdomadaire comptent, quelle que soit la répartition (ex. 7 h 15 du lundi au jeudi + 6 h le vendredi = 35 h, sans heures supp). Sinon, chaque jour au-delà de sa part (contrat ÷ jours) compte.")
                 }
 
                 // Expenses

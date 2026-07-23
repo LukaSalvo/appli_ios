@@ -19,6 +19,8 @@ struct BudgetView: View {
     @Query(sort: \VariableExpense.date, order: .reverse) private var variableExpenses: [VariableExpense]
 
     @State private var showingAddVariable = false
+    @State private var monthlyText: String = ""
+    @State private var isWriting: Bool = false
 
     private var payMode: PayMode { PayMode(rawValue: payModeRaw) ?? .hourly }
 
@@ -82,6 +84,7 @@ struct BudgetView: View {
             ScrollView {
                 VStack(spacing: 20) {
                     ringCard
+                    summaryCard
                     incomeCard
                     if mealTicketsEnabled {
                         mealTicketCard
@@ -95,6 +98,62 @@ struct BudgetView: View {
             .navigationTitle("Budget")
             .sheet(isPresented: $showingAddVariable) {
                 AddVariableExpenseView()
+            }
+            .onAppear { if monthlyText.isEmpty { regenerateSummary() } }
+        }
+    }
+
+    // MARK: - Monthly summary (AI + fallback)
+
+    private var summaryCard: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    sectionHeader("Bilan du mois", systemImage: "text.badge.checkmark", tint: .appAccent)
+                    Spacer()
+                    Button(action: regenerateSummary) {
+                        if isWriting {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "arrow.clockwise")
+                        }
+                    }
+                    .buttonStyle(.borderless)
+                    .disabled(isWriting)
+                    .accessibilityLabel("Régénérer le bilan")
+                }
+                Text(monthlyText.isEmpty ? "…" : monthlyText)
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    /// The category with the highest total this month (fixed + variable).
+    private var topCategoryName: String? {
+        var totals: [ExpenseCategory: Double] = [:]
+        for e in expenses { totals[e.category, default: 0] += e.amount }
+        for e in variableThisMonth { totals[e.category, default: 0] += e.amount }
+        return totals.max { $0.value < $1.value }?.key.rawValue
+    }
+
+    private func regenerateSummary() {
+        guard !isWriting else { return }
+        isWriting = true
+        let input = MonthlySummary.Input(
+            monthName: Date().formatted(.dateTime.month(.wide)),
+            income: summary.totalIncome,
+            spending: summary.totalSpending,
+            remaining: summary.remaining,
+            topCategory: topCategoryName,
+            overtimeHours: 0
+        )
+        Task {
+            let text = await MonthlySummary.generate(input)
+            await MainActor.run {
+                monthlyText = text
+                isWriting = false
             }
         }
     }

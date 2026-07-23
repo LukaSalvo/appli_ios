@@ -109,6 +109,30 @@ struct WorkStats {
     var isToday: (Date) -> Bool {
         { [calendar, now] date in calendar.isDate(date, inSameDayAs: now) }
     }
+
+    // MARK: - Overtime (current week)
+
+    /// Total hours worked in the current week.
+    var weeklyTotal: Double {
+        currentWeek.reduce(0) { $0 + $1.hours }
+    }
+
+    /// Overtime hours for the current week.
+    ///
+    /// - flexible `true` ("entreprise flexible") : only the hours beyond the
+    ///   weekly contract count, whatever the daily spread. So 7h15 × 4 + 6h =
+    ///   35 h stays a normal 35 h week, with no overtime.
+    /// - flexible `false` : each day above its share (contract ÷ jours) counts,
+    ///   so a 7h15 day already generates 15 min of overtime.
+    func weeklyOvertime(weeklyContract: Double, daysPerWeek: Int, flexible: Bool) -> Double {
+        guard weeklyContract > 0 else { return 0 }
+        let daily = currentWeek.map(\.hours)
+        if flexible {
+            return max(0, daily.reduce(0, +) - weeklyContract)
+        }
+        let dailyContract = daysPerWeek > 0 ? weeklyContract / Double(daysPerWeek) : 0
+        return daily.reduce(0) { $0 + max(0, $1 - dailyContract) }
+    }
 }
 
 /// "6 h 30", "45 min", "8 h" — a compact, human hours label.
