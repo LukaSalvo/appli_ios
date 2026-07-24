@@ -39,6 +39,15 @@ et ce qu'il vous reste à vivre.
 - Chaque session garde un **snapshot** du taux et des avantages du moment :
   modifier vos réglages plus tard ne fausse pas l'historique.
 
+### Notifications
+- **Bilan quotidien à 18 h** : chaque jour, une notification récapitule les
+  **heures faites** et l'**argent gagné** dans la journée, plus le **temps
+  restant (h/min)** pour atteindre les **35 h de la semaine** (votre contrat
+  hebdomadaire, configurable). Activable/désactivable dans les Réglages.
+- Comme une notification locale a un contenu figé, les chiffres sont
+  recalculés et replanifiés à chaque ouverture de l'app et à chaque changement
+  de session — rien n'est envoyé en ligne.
+
 ### Assistant IA (onglet « IA »)
 - **Ajouter, modifier ou supprimer** une journée en langage naturel — y compris
   un **jour passé** : « supprime mes heures d'avant-hier », « modifie lundi, je
@@ -72,6 +81,8 @@ PayTracker/
     SessionCommandParser.swift # Analyse d'un ordre (dates FR) + IA on-device
     AISessionCommandParser.swift # Intention + heures via Foundation Models (iOS 26+)
     SpeechRecognizer.swift     # Dictée vocale (framework Speech) pour l'assistant
+    SessionReminder.swift      # Notif locale : session en cours oubliée
+    DailySummaryNotification.swift # Notif locale : bilan quotidien à 18 h
   Views/
     AIAssistantView.swift      # Onglet « IA » : chat + barre clavier/vocale
     TrackerView.swift          # Suivi live (heure) / salaire mensuel — intégré en tête de l'onglet Heures
