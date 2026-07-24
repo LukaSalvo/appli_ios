@@ -21,6 +21,8 @@ targets:
         NSSupportsLiveActivities: true
         NSCalendarsFullAccessUsageDescription: "L'accès à votre calendrier permet d'importer votre emploi du temps d'alternance (jours d'école et d'entreprise)."
         NSCalendarsUsageDescription: "L'accès à votre calendrier permet d'importer votre emploi du temps d'alternance (jours d'école et d'entreprise)."
+        NSMicrophoneUsageDescription: "Le micro permet de dicter vos heures à l'assistant IA."
+        NSSpeechRecognitionUsageDescription: "La reconnaissance vocale transcrit votre dictée pour ajouter ou corriger vos heures."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lukasalvo.paytracker

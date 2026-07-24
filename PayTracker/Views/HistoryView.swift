@@ -13,6 +13,7 @@ struct HistoryView: View {
     @State private var period: StatsPeriod = .week
     @State private var sessionToDelete: WorkSession?
     @State private var sessionToEdit: WorkSession?
+    @State private var showingManualEntry = false
 
     @AppStorage("overtimeEnabled") private var overtimeEnabled: Bool = false
     @AppStorage("weeklyContractHours") private var weeklyContractHours: Double = 35
@@ -25,6 +26,7 @@ struct HistoryView: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    trackerSection
                     hoursCard
                     if overtimeEnabled {
                         overtimeCard
@@ -35,7 +37,19 @@ struct HistoryView: View {
                 .padding()
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Heures & historique")
+            .navigationTitle("Suivi & heures")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        showingManualEntry = true
+                    } label: {
+                        Label("Saisir mes heures", systemImage: "square.and.pencil")
+                    }
+                    .sheet(isPresented: $showingManualEntry) {
+                        AddSessionView()
+                    }
+                }
+            }
             .confirmationDialog(
                 "Supprimer cette session ?",
                 isPresented: Binding(
@@ -56,6 +70,17 @@ struct HistoryView: View {
             .sheet(item: $sessionToEdit) { session in
                 AddSessionView(session: session)
             }
+        }
+    }
+
+    // MARK: - Live pay tracking (moved here from the former "Suivi" tab)
+
+    private var trackerSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("Suivi de paie", systemImage: "timer")
+                .font(.headline)
+                .foregroundStyle(Color.appAccent)
+            TrackerView()
         }
     }
 

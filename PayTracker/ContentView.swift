@@ -5,8 +5,8 @@ struct ContentView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            TrackerView()
-                .tabItem { Label("Suivi", systemImage: "timer") }
+            AIAssistantView()
+                .tabItem { Label("IA", systemImage: "sparkles") }
                 .tag(0)
 
             BudgetView()
@@ -17,6 +17,7 @@ struct ContentView: View {
                 .tabItem { Label("Agenda", systemImage: "calendar") }
                 .tag(2)
 
+            // Live pay tracking now lives at the top of the "Heures" hub.
             HistoryView()
                 .tabItem { Label("Heures", systemImage: "chart.bar.fill") }
                 .tag(3)
@@ -27,8 +28,9 @@ struct ContentView: View {
         }
         .tint(.appAccent)
         .onOpenURL { url in
-            // Deep link from the Home Screen widget → open the pay tracker.
-            if url.scheme == "paytracker" { selectedTab = 0 }
+            // Deep link from the Home Screen widget → open the live pay tracker
+            // (now hosted in the "Heures" tab).
+            if url.scheme == "paytracker" { selectedTab = 3 }
         }
     }
 }
