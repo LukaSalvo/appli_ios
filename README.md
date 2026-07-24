@@ -39,12 +39,27 @@ et ce qu'il vous reste à vivre.
 - Chaque session garde un **snapshot** du taux et des avantages du moment :
   modifier vos réglages plus tard ne fausse pas l'historique.
 
+### Assistant IA (onglet « IA »)
+- **Ajouter, modifier ou supprimer** une journée en langage naturel — y compris
+  un **jour passé** : « supprime mes heures d'avant-hier », « modifie lundi, je
+  suis parti à 18h », « ajoute hier de 9h à 17h avec 30 min de pause ».
+- **Barre de saisie clavier *et* vocale** : dictez votre demande au micro
+  (reconnaissance vocale française) ou tapez-la.
+- Comprend les dates relatives (hier, avant-hier, « il y a 3 jours »), les jours
+  de la semaine (« mardi », « lundi dernier ») et les dates (« le 12 »,
+  « 12 juillet », « 12/07 »).
+- Chaque action est appliquée immédiatement à votre historique, avec un bouton
+  **Annuler** dans la conversation.
+- L'analyse se fait **sur l'appareil** : l'IA d'Apple (Foundation Models,
+  iOS 26+) affine la compréhension quand elle est disponible, sinon un
+  analyseur local prend le relais — rien n'est envoyé en ligne.
+
 ## Architecture
 
 ```
 PayTracker/
   PayTrackerApp.swift          # Point d'entrée, ModelContainer SwiftData
-  ContentView.swift            # TabView (Suivi / Budget / Historique / Réglages)
+  ContentView.swift            # TabView (IA / Budget / Agenda / Heures / Réglages)
   Theme.swift                  # Couleurs, dégradés + composant Card réutilisable
   Models/
     PayMode.swift              # Mode de paie + helpers (format €, fraction du mois)
@@ -53,8 +68,13 @@ PayTracker/
     Budget.swift               # Calcul du budget + config tickets restaurant
     WorkStats.swift            # Cumul d'heures jour/semaine/mois + série hebdo
     WorkSession.swift          # Session de travail (dates + snapshot des taux)
+    SessionCommand.swift       # Ordre IA structuré (ajouter/modifier/supprimer)
+    SessionCommandParser.swift # Analyse d'un ordre (dates FR) + IA on-device
+    AISessionCommandParser.swift # Intention + heures via Foundation Models (iOS 26+)
+    SpeechRecognizer.swift     # Dictée vocale (framework Speech) pour l'assistant
   Views/
-    TrackerView.swift          # Suivi live (heure) ou salaire cumulé (mois)
+    AIAssistantView.swift      # Onglet « IA » : chat + barre clavier/vocale
+    TrackerView.swift          # Suivi live (heure) / salaire mensuel — intégré en tête de l'onglet Heures
     BudgetView.swift           # Tableau de bord budget
     BudgetRing.swift           # Anneau « reste à vivre »
     ExpensesView.swift         # Liste des dépenses fixes
