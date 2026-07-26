@@ -50,7 +50,7 @@ struct AIAssistantView: View {
                     }
                     .padding()
                 }
-                .background(Color(.systemGroupedBackground))
+                .background(Color.appBackground)
                 .onChange(of: messages.count) { _, _ in scrollToEnd(proxy) }
                 .onChange(of: isThinking) { _, _ in scrollToEnd(proxy) }
             }

@@ -59,6 +59,7 @@ struct TrackerView: View {
             liveCard(for: session)
             pauseCard(for: session)
             Button(role: .destructive) {
+                Haptics.notify(.success)
                 session.endDate = Date()
                 SessionReminder.cancel()
                 LiveActivityManager.end()
@@ -87,6 +88,7 @@ struct TrackerView: View {
                 .padding(.vertical, 12)
             }
             Button {
+                Haptics.impact(.medium)
                 startSession()
             } label: {
                 Label("Démarrer", systemImage: "play.circle.fill")
@@ -139,20 +141,17 @@ struct TrackerView: View {
 
             Card(hero: true) {
                 VStack(spacing: 14) {
-                    Label("En cours", systemImage: "circle.fill")
-                        .font(.caption.bold())
-                        .foregroundStyle(Color.goldInk)
-                        .labelStyle(.titleAndIcon)
-                        .imageScale(.small)
+                    HStack(spacing: 6) {
+                        PulsingDot(color: .gold)
+                        Text("En cours").eyebrow(.goldInk)
+                    }
 
                     Text(formattedDuration(elapsed))
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
                         .monospacedDigit()
+                        .foregroundStyle(.secondary)
 
-                    Text(Money.string(total))
-                        .font(.system(size: 44, weight: .heavy, design: .rounded))
-                        .foregroundStyle(LinearGradient.moneyText)
-                        .contentTransition(.numericText())
+                    HeroAmountText(value: Money.string(total))
                         .animation(.default, value: total)
 
                     VStack(spacing: 8) {
@@ -182,15 +181,9 @@ struct TrackerView: View {
 
             Card(hero: true) {
                 VStack(spacing: 14) {
-                    Text(monthTitle(context.date))
-                        .font(.caption.bold())
-                        .foregroundStyle(.secondary)
-                        .textCase(.uppercase)
+                    Text(monthTitle(context.date)).eyebrow()
 
-                    Text(Money.string(earned))
-                        .font(.system(size: 46, weight: .heavy, design: .rounded))
-                        .foregroundStyle(LinearGradient.moneyText)
-                        .contentTransition(.numericText())
+                    HeroAmountText(value: Money.string(earned), size: 46)
                         .animation(.default, value: earned)
 
                     Text("gagné ce mois-ci")

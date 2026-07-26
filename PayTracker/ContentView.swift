@@ -2,7 +2,10 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
+    @AppStorage("appearanceMode") private var appearanceModeRaw: String = AppearanceMode.system.rawValue
     @State private var selectedTab = 0
+
+    private var appearanceMode: AppearanceMode { AppearanceMode(rawValue: appearanceModeRaw) ?? .system }
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -37,6 +40,8 @@ struct ContentView: View {
                 .tag(4)
         }
         .tint(.appAccent)
+        .toolbarBackground(.ultraThinMaterial, for: .tabBar)
+        .preferredColorScheme(appearanceMode.colorScheme)
         .onOpenURL { url in
             // Deep link from the Home Screen widget → open the live pay tracker
             // (now hosted in the "Heures" tab).

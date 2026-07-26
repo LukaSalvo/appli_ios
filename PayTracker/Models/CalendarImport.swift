@@ -125,7 +125,8 @@ enum CalendarImporter {
         fixed: Double,
         schoolPaid: Bool,
         useAI: Bool,
-        existingDays: Set<Date>
+        existingDays: Set<Date>,
+        importedCalendar: ImportedCalendar? = nil
     ) async -> [WorkSession] {
         let calendar = Calendar.current
 
@@ -166,7 +167,8 @@ enum CalendarImporter {
                 hourlyRateSnapshot: paid ? hourlyRate : 0,
                 perHourBenefitsSnapshot: paid ? perHour : 0,
                 fixedBenefitsSnapshot: paid ? fixed : 0,
-                kind: dayKind
+                kind: dayKind,
+                importedCalendar: importedCalendar
             )
             sessions.append(session)
         }
