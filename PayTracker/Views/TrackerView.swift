@@ -15,8 +15,6 @@ struct TrackerView: View {
 
     @Query(sort: \Benefit.createdAt) private var benefits: [Benefit]
 
-    @State private var showingManualEntry = false
-
     /// Refreshes the Live Activity's earned amount about once a minute while a
     /// session is running (the timer itself ticks live in the widget).
     private let liveActivityTick = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
@@ -31,40 +29,25 @@ struct TrackerView: View {
         benefits.filter { $0.isEnabled && $0.type == .perShift }.reduce(0) { $0 + $1.amount }
     }
 
+    /// Embeddable content — the live pay tracker now sits at the top of the
+    /// "Heures" hub, so it no longer carries its own `NavigationStack`,
+    /// scroll view or toolbar (its host provides those). Manual day entry lives
+    /// in the host's toolbar.
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(spacing: 20) {
-                    if payMode == .hourly {
-                        hourlyContent
-                    } else {
-                        monthlyContent
-                    }
-                }
-                .padding()
+        VStack(spacing: 20) {
+            if payMode == .hourly {
+                hourlyContent
+            } else {
+                monthlyContent
             }
-            .background(Color.appBackground)
-            .navigationTitle("Suivi de paie")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showingManualEntry = true
-                    } label: {
-                        Label("Saisir mes heures", systemImage: "square.and.pencil")
-                    }
-                }
-            }
-            .sheet(isPresented: $showingManualEntry) {
-                AddSessionView()
-            }
-            .onReceive(liveActivityTick) { _ in
-                guard let session = activeSession else { return }
-                LiveActivityManager.update(
-                    startDate: session.startDate,
-                    earned: session.totalPay(),
-                    ratePerHour: session.hourlyRateSnapshot + session.perHourBenefitsSnapshot
-                )
-            }
+        }
+        .onReceive(liveActivityTick) { _ in
+            guard let session = activeSession else { return }
+            LiveActivityManager.update(
+                startDate: session.startDate,
+                earned: session.totalPay(),
+                ratePerHour: session.hourlyRateSnapshot + session.perHourBenefitsSnapshot
+            )
         }
     }
 
@@ -113,17 +96,6 @@ struct TrackerView: View {
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
-            .tint(.appAccent)
-            .controlSize(.large)
-
-            Button {
-                showingManualEntry = true
-            } label: {
-                Label("Saisir mes heures (arrivée, départ, pause)", systemImage: "square.and.pencil")
-                    .font(.subheadline.weight(.semibold))
-                    .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(.bordered)
             .tint(.appAccent)
             .controlSize(.large)
         }

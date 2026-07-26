@@ -22,6 +22,8 @@ struct SettingsView: View {
     @AppStorage("workingDaysPerWeek") private var workingDaysPerWeek: Int = 5
     @AppStorage("flexibleCompany") private var flexibleCompany: Bool = false
 
+    @AppStorage("dailySummaryEnabled") private var dailySummaryEnabled: Bool = true
+
     @Query(sort: \Benefit.createdAt) private var benefits: [Benefit]
     @Query(sort: \WorkSession.startDate) private var allSessions: [WorkSession]
     @Query(sort: \Expense.createdAt) private var allExpenses: [Expense]
@@ -155,6 +157,15 @@ struct SettingsView: View {
                     Text("Heures supplémentaires")
                 } footer: {
                     Text("« Entreprise flexible » : seules les heures au-delà du contrat hebdomadaire comptent, quelle que soit la répartition (ex. 7 h 15 du lundi au jeudi + 6 h le vendredi = 35 h, sans heures supp). Sinon, chaque jour au-delà de sa part (contrat ÷ jours) compte.")
+                }
+
+                // Notifications
+                Section {
+                    Toggle("Bilan quotidien à 18 h", isOn: $dailySummaryEnabled)
+                } header: {
+                    Text("Notifications")
+                } footer: {
+                    Text("Chaque jour à 18 h, une notification récapitule vos heures et votre paie du jour, ainsi que le temps qu'il reste pour atteindre vos \(formatHours(weeklyContractHours)) de la semaine.")
                 }
 
                 // Expenses

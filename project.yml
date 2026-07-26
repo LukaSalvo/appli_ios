@@ -21,8 +21,8 @@ targets:
         NSSupportsLiveActivities: true
         NSCalendarsFullAccessUsageDescription: "L'accès à votre calendrier permet d'importer votre emploi du temps d'alternance (jours d'école et d'entreprise)."
         NSCalendarsUsageDescription: "L'accès à votre calendrier permet d'importer votre emploi du temps d'alternance (jours d'école et d'entreprise)."
-        NSMicrophoneUsageDescription: "Le micro permet de décrire votre journée à voix haute pour la saisir automatiquement."
-        NSSpeechRecognitionUsageDescription: "La reconnaissance vocale, sur votre iPhone, transforme votre description parlée en horaires de travail."
+        NSMicrophoneUsageDescription: "Le micro permet de décrire votre journée ou de dicter vos heures à voix haute."
+        NSSpeechRecognitionUsageDescription: "La reconnaissance vocale, sur votre iPhone, transforme votre voix en horaires de travail."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lukasalvo.paytracker

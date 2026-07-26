@@ -91,8 +91,8 @@ struct AddSessionView: View {
                             runSmartParse()
                         }
                     }
-                    if let error = speech.errorMessage {
-                        Text(error).font(.caption2).foregroundStyle(Color.moneyDanger)
+                    if let status = speech.statusMessage {
+                        Text(status).font(.caption2).foregroundStyle(Color.moneyDanger)
                     }
                 } header: {
                     Text("Saisie rapide")
