@@ -13,7 +13,8 @@ final class ImportedCalendar {
     var sessions: [WorkSession] = []
 
     init(name: String, importedAt: Date = .now) {
-        self.name = name
+        // The name is a file name chosen by whoever produced the timetable.
+        self.name = Sanitize.text(name, fallback: "Calendrier importé")
         self.importedAt = importedAt
     }
 }

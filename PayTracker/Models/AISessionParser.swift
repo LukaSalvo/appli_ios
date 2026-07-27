@@ -49,7 +49,8 @@ enum AISessionParser {
                 day: day,
                 arrival: arrival,
                 departure: departure,
-                breakMinutes: max(0, d.breakMinutes)
+                // The model's integer is free-form — keep it inside a day.
+                breakMinutes: Sanitize.breakMinutes(d.breakMinutes)
             )
         } catch {
             return nil

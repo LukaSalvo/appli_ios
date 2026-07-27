@@ -19,8 +19,14 @@ enum DailySummaryNotification {
     ///
     /// Handles authorization transparently: asks the first time, and silently
     /// does nothing if the user has denied notifications.
+    ///
+    /// - hideAmounts: leaves the euro figures out of the body. A notification is
+    ///   rendered on the Lock Screen, so its text is readable by anyone holding
+    ///   the phone whenever previews are shown — this keeps the recap useful
+    ///   without publishing what the user earns.
     static func refresh(
         enabled: Bool,
+        hideAmounts: Bool = false,
         hoursToday: Double,
         earningsToday: Double,
         weeklyHours: Double,
@@ -36,7 +42,8 @@ enum DailySummaryNotification {
             hoursToday: hoursToday,
             earningsToday: earningsToday,
             weeklyHours: weeklyHours,
-            weeklyTarget: weeklyTarget
+            weeklyTarget: weeklyTarget,
+            hideAmounts: hideAmounts
         )
 
         center.getNotificationSettings { settings in
@@ -86,9 +93,12 @@ enum DailySummaryNotification {
         hoursToday: Double,
         earningsToday: Double,
         weeklyHours: Double,
-        weeklyTarget: Double
+        weeklyTarget: Double,
+        hideAmounts: Bool = false
     ) -> String {
-        let today = "Aujourd'hui : \(formatHours(hoursToday)) travaillées · \(Money.string(earningsToday))"
+        let today = hideAmounts
+            ? "Aujourd'hui : \(formatHours(hoursToday)) travaillées"
+            : "Aujourd'hui : \(formatHours(hoursToday)) travaillées · \(Money.string(earningsToday))"
 
         guard weeklyTarget > 0 else { return today }
         let remaining = weeklyTarget - weeklyHours

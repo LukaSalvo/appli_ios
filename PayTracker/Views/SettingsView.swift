@@ -24,6 +24,10 @@ struct SettingsView: View {
 
     @AppStorage("dailySummaryEnabled") private var dailySummaryEnabled: Bool = true
 
+    @AppStorage(AppLock.enabledKey) private var appLockEnabled: Bool = false
+    @AppStorage("hideAmountsOnLockScreen") private var hideAmountsOnLockScreen: Bool = false
+    @EnvironmentObject private var appLock: AppLock
+
     @Query(sort: \Benefit.createdAt) private var benefits: [Benefit]
     @Query(sort: \WorkSession.startDate) private var allSessions: [WorkSession]
     @Query(sort: \Expense.createdAt) private var allExpenses: [Expense]
@@ -34,7 +38,7 @@ struct SettingsView: View {
     @State private var exportDocument: BackupDocument?
     @State private var showingExporter = false
     @State private var showingImporter = false
-    @State private var pendingImport: AppBackup?
+    @State private var pendingImport: AppBackup.Checked?
     @State private var showingImportConfirm = false
     @State private var fileError: String?
 
@@ -69,7 +73,8 @@ struct SettingsView: View {
                     .pickerStyle(.segmented)
 
                     if payMode == .hourly {
-                        amountRow(label: "Taux horaire net", value: $hourlyRate)
+                        amountRow(label: "Taux horaire net", value: $hourlyRate,
+                                  limit: 0...Sanitize.maxRate)
                         Stepper(value: $forgottenSessionHours, in: 0...24, step: 1) {
                             HStack {
                                 Text("Rappel de session oubliée")
@@ -116,7 +121,7 @@ struct SettingsView: View {
                 Section {
                     Toggle("Tickets restaurant", isOn: $mealTicketsEnabled)
                     if mealTicketsEnabled {
-                        amountRow(label: "Valeur d'un ticket", value: $mealTicketValue)
+                        amountRow(label: "Valeur d'un ticket", value: $mealTicketValue, limit: 0...1_000)
                         VStack(alignment: .leading) {
                             HStack {
                                 Text("Part employeur")
@@ -168,6 +173,36 @@ struct SettingsView: View {
                     Text("Chaque jour à 18 h, une notification récapitule vos heures et votre paie du jour, ainsi que le temps qu'il reste pour atteindre vos \(formatHours(weeklyContractHours)) de la semaine.")
                 }
 
+                // Privacy & lock
+                Section {
+                    if AppLock.isAvailable {
+                        Toggle("Verrouiller l'app (\(AppLock.methodLabel))", isOn: $appLockEnabled)
+                            .onChange(of: appLockEnabled) { _, enabled in
+                                guard enabled else {
+                                    appLock.disable()
+                                    return
+                                }
+                                // Prove device ownership before arming the lock,
+                                // so it can't be switched on for someone else.
+                                Task {
+                                    let confirmed = await appLock.confirmOwnership()
+                                    if !confirmed { appLockEnabled = false }
+                                }
+                            }
+                    } else {
+                        Label("Ajoutez un code sur votre iPhone pour activer le verrouillage.",
+                              systemImage: "exclamationmark.triangle")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Toggle("Masquer les montants sur l'écran verrouillé", isOn: $hideAmountsOnLockScreen)
+                } header: {
+                    Text("Confidentialité")
+                } footer: {
+                    Text("Le verrouillage demande \(AppLock.methodLabel) à chaque ouverture et masque l'app dans le sélecteur d'applications. Le masquage des montants retire les sommes en euros du bilan quotidien et de l'activité en direct — l'écran verrouillé n'affiche plus que vos heures.")
+                }
+
                 // Expenses
                 Section("Budget") {
                     NavigationLink {
@@ -193,7 +228,7 @@ struct SettingsView: View {
                 } header: {
                     Text("Sauvegarde")
                 } footer: {
-                    Text("Exportez un fichier avec toutes vos données (sessions, avantages, dépenses, réglages). L'import remplace entièrement les données actuelles par celles du fichier.")
+                    Text("Exportez un fichier avec toutes vos données (sessions, avantages, dépenses, réglages). ⚠️ Ce fichier n'est pas chiffré : il contient votre salaire, votre solde et vos dépenses en clair. Rangez-le dans un espace de confiance. L'import remplace entièrement les données actuelles par celles du fichier.")
                 }
             }
             .navigationTitle("Réglages")
@@ -228,7 +263,7 @@ struct SettingsView: View {
                 Button("Remplacer", role: .destructive) { applyImport() }
                 Button("Annuler", role: .cancel) { pendingImport = nil }
             } message: {
-                Text("Sessions, avantages, dépenses et réglages seront remplacés par le contenu du fichier importé. Cette action est irréversible.")
+                Text(importConfirmationMessage)
             }
             .alert(
                 "Erreur",
@@ -277,20 +312,33 @@ struct SettingsView: View {
         )
     }
 
+    /// What the confirmation dialog says before wiping the current data —
+    /// including anything the validator had to repair, so a partially broken
+    /// file is never mistaken for a clean one.
+    private var importConfirmationMessage: String {
+        let base = "Sessions, avantages, dépenses et réglages seront remplacés par le contenu du fichier importé. Cette action est irréversible."
+        guard let checked = pendingImport else { return base }
+        var message = "Contenu du fichier : \(checked.summary).\n\n\(base)"
+        if checked.hasCorrections {
+            message += "\n\nCertaines valeurs du fichier étaient hors limites ou incohérentes : elles ont été corrigées ou ignorées."
+        }
+        return message
+    }
+
+    /// Loads and **validates** the file before anything is shown or written.
+    /// The picker only proves the user chose the file, not that the app wrote
+    /// it — see `AppBackup.checked()` for what is enforced.
     private func importFile(at url: URL) {
-        let accessed = url.startAccessingSecurityScopedResource()
-        defer { if accessed { url.stopAccessingSecurityScopedResource() } }
         do {
-            let data = try Data(contentsOf: url)
-            pendingImport = try AppBackup.decoder.decode(AppBackup.self, from: data)
+            pendingImport = try AppBackup.load(from: url)
             showingImportConfirm = true
         } catch {
-            fileError = "Fichier illisible : \(error.localizedDescription)"
+            fileError = error.localizedDescription
         }
     }
 
     private func applyImport() {
-        guard let backup = pendingImport else { return }
+        guard let backup = pendingImport?.backup else { return }
 
         for session in allSessions { modelContext.delete(session) }
         for benefit in benefits { modelContext.delete(benefit) }
@@ -329,15 +377,31 @@ struct SettingsView: View {
         mealTicketEmployerPct = backup.settings.mealTicketEmployerPct
         if let mode = backup.settings.appearanceMode { appearanceModeRaw = mode }
 
+        // The old rows are gone: surface a write failure instead of leaving the
+        // user with a half-applied import they think succeeded.
+        do {
+            try modelContext.save()
+            Haptics.notify(.success)
+        } catch {
+            fileError = "L'import n'a pas pu être enregistré : \(error.localizedDescription)"
+            Haptics.notify(.error)
+        }
         pendingImport = nil
-        Haptics.notify(.success)
     }
 
-    private func amountRow(label: String, value: Binding<Double>) -> some View {
-        HStack {
+    /// A money field whose value is clamped on every edit. Typing an absurd
+    /// figure (or pasting one) otherwise propagates straight into the totals,
+    /// the projected balance and the next export.
+    private func amountRow(label: String, value: Binding<Double>,
+                           limit: ClosedRange<Double> = 0...Sanitize.maxAmount) -> some View {
+        let clamped = Binding<Double>(
+            get: { value.wrappedValue },
+            set: { value.wrappedValue = Sanitize.number($0, in: limit) }
+        )
+        return HStack {
             Text(label)
             Spacer()
-            TextField("Montant", value: value, format: .number.precision(.fractionLength(2)))
+            TextField("Montant", value: clamped, format: .number.precision(.fractionLength(2)))
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
                 .frame(width: 110)
@@ -353,4 +417,5 @@ struct SettingsView: View {
 #Preview {
     SettingsView()
         .modelContainer(for: [WorkSession.self, Benefit.self, Expense.self], inMemory: true)
+        .environmentObject(AppLock())
 }

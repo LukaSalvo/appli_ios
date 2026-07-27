@@ -33,10 +33,16 @@ struct LogWorkDayIntent: AppIntent {
         let storedRate = UserDefaults.standard.double(forKey: "hourlyRate")
         let rate = storedRate == 0 ? 11.65 : storedRate
 
+        // A night shift dictated as "22h à 6h" parses as a departure before the
+        // arrival — roll it to the next day, exactly like the manual form and
+        // the assistant do, instead of storing an empty day.
+        var departure = parsed.departure
+        if departure <= parsed.arrival { departure.addTimeInterval(24 * 3600) }
+
         let session = WorkSession(
             startDate: parsed.arrival,
-            endDate: parsed.departure,
-            breakDuration: Double(parsed.breakMinutes) * 60,
+            endDate: departure,
+            breakDuration: Double(Sanitize.breakMinutes(parsed.breakMinutes)) * 60,
             hourlyRateSnapshot: rate,
             perHourBenefitsSnapshot: perHour,
             fixedBenefitsSnapshot: fixed

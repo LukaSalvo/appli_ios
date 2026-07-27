@@ -4,6 +4,10 @@ import ActivityKit
 
 /// The Live Activity: shows the session timer ticking and the pay earned so
 /// far, both on the Lock Screen and in the Dynamic Island.
+///
+/// Amounts go through ``maskedAmount(_:hidden:)``: when the user has asked for
+/// amounts to stay private, the Lock Screen shows the running timer but never
+/// the euro figures.
 struct PayLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: PayActivityAttributes.self) { context in
@@ -19,7 +23,7 @@ struct PayLiveActivity: Widget {
                         .foregroundStyle(.secondary)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(context.state.earned, format: .currency(code: "EUR"))
+                    maskedAmount(context.state.earned, hidden: context.state.hideAmounts)
                         .font(.headline)
                         .monospacedDigit()
                         .foregroundStyle(.green)
@@ -29,7 +33,7 @@ struct PayLiveActivity: Widget {
                         Text(context.state.startDate, style: .timer)
                             .monospacedDigit()
                         Spacer()
-                        Text("\(context.state.ratePerHour, format: .currency(code: "EUR"))/h")
+                        maskedRate(context.state.ratePerHour, hidden: context.state.hideAmounts)
                             .foregroundStyle(.secondary)
                     }
                     .font(.caption)
@@ -38,7 +42,7 @@ struct PayLiveActivity: Widget {
                 Image(systemName: "eurosign.circle.fill")
                     .foregroundStyle(.green)
             } compactTrailing: {
-                Text(context.state.earned, format: .currency(code: "EUR"))
+                maskedAmount(context.state.earned, hidden: context.state.hideAmounts)
                     .monospacedDigit()
             } minimal: {
                 Image(systemName: "eurosign.circle.fill")
@@ -46,6 +50,15 @@ struct PayLiveActivity: Widget {
             }
         }
     }
+}
+
+/// A euro amount, or a placeholder when the user keeps amounts off the Lock Screen.
+private func maskedAmount(_ value: Double, hidden: Bool) -> Text {
+    hidden ? Text("•••") : Text(value, format: .currency(code: "EUR"))
+}
+
+private func maskedRate(_ value: Double, hidden: Bool) -> Text {
+    hidden ? Text("•••/h") : Text("\(value, format: .currency(code: "EUR"))/h")
 }
 
 private struct LockScreenView: View {
@@ -63,11 +76,11 @@ private struct LockScreenView: View {
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 4) {
-                Text(state.earned, format: .currency(code: "EUR"))
+                maskedAmount(state.earned, hidden: state.hideAmounts)
                     .font(.title2.bold())
                     .monospacedDigit()
                     .foregroundStyle(.green)
-                Text("\(state.ratePerHour, format: .currency(code: "EUR"))/h")
+                maskedRate(state.ratePerHour, hidden: state.hideAmounts)
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }

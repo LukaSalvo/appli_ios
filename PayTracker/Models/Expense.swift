@@ -37,9 +37,13 @@ final class Expense {
         set { categoryRawValue = newValue.rawValue }
     }
 
+    /// Values are normalised here rather than at each call site: an expense is
+    /// created from a form, from a natural-language parse, from an imported
+    /// backup and from the on-device model, and every one of those paths must
+    /// end up with a display-safe name and a finite, in-range amount.
     init(name: String, amount: Double, category: ExpenseCategory = .other) {
-        self.name = name
-        self.amount = amount
+        self.name = Sanitize.text(name, fallback: category.rawValue)
+        self.amount = Sanitize.amount(amount)
         self.categoryRawValue = category.rawValue
         self.createdAt = Date()
     }

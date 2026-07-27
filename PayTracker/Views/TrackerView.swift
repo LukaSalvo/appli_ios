@@ -9,6 +9,7 @@ struct TrackerView: View {
     @AppStorage("hourlyRate") private var hourlyRate: Double = 11.65
     @AppStorage("monthlySalary") private var monthlySalary: Double = 1800
     @AppStorage("forgottenSessionHours") private var forgottenSessionHours: Double = 12
+    @AppStorage("hideAmountsOnLockScreen") private var hideAmountsOnLockScreen: Bool = false
 
     @Query(filter: #Predicate<WorkSession> { $0.endDate == nil })
     private var activeSessions: [WorkSession]
@@ -46,7 +47,8 @@ struct TrackerView: View {
             LiveActivityManager.update(
                 startDate: session.startDate,
                 earned: session.totalPay(),
-                ratePerHour: session.hourlyRateSnapshot + session.perHourBenefitsSnapshot
+                ratePerHour: session.hourlyRateSnapshot + session.perHourBenefitsSnapshot,
+                hideAmounts: hideAmountsOnLockScreen
             )
         }
     }
@@ -242,7 +244,8 @@ struct TrackerView: View {
         LiveActivityManager.start(
             startDate: session.startDate,
             earned: 0,
-            ratePerHour: session.hourlyRateSnapshot + session.perHourBenefitsSnapshot
+            ratePerHour: session.hourlyRateSnapshot + session.perHourBenefitsSnapshot,
+            hideAmounts: hideAmountsOnLockScreen
         )
     }
 

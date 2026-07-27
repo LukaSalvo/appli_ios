@@ -143,9 +143,9 @@ struct AddSessionView: View {
     private func save() {
         if let session = editing {
             // Edit in place; keep the rate/benefit snapshot as it was recorded.
-            session.startDate = startDate
-            session.endDate = endDate
-            session.breakDuration = Double(breakMinutes) * 60
+            session.retime(startDate: startDate,
+                           endDate: endDate,
+                           breakDuration: Double(breakMinutes) * 60)
         } else {
             let session = WorkSession(
                 startDate: startDate,

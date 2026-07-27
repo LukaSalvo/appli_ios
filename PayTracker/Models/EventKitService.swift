@@ -6,6 +6,10 @@ import EventKit
 enum EventKitService {
 
     /// Ask for calendar access, then return events in a window around today.
+    ///
+    /// Titles here are no more trustworthy than those in an `.ics` file — a
+    /// subscribed or shared calendar is written by someone else — so events go
+    /// through the same sanitising and capping as a file import.
     static func fetchEvents(daysBack: Int = 30, daysForward: Int = 90) async -> [ImportedEvent] {
         let store = EKEventStore()
         guard await requestAccess(store) else { return [] }
@@ -15,13 +19,10 @@ enum EventKitService {
         let end = calendar.date(byAdding: .day, value: daysForward, to: Date()) ?? Date()
 
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
-        return store.events(matching: predicate).map {
-            ImportedEvent(
-                title: $0.title ?? "Événement",
-                start: $0.startDate,
-                end: $0.endDate ?? $0.startDate.addingTimeInterval(3600)
-            )
-        }
+        return store.events(matching: predicate)
+            .prefix(ICSParser.Limits.maxEvents)
+            .filter { Sanitize.isPlausible($0.startDate) }
+            .map { ICSParser.makeEvent(title: $0.title ?? "", start: $0.startDate, end: $0.endDate) }
     }
 
     private static func requestAccess(_ store: EKEventStore) async -> Bool {
