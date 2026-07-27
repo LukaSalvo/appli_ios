@@ -104,7 +104,7 @@ final class AppLock: ObservableObject {
 
         let outcome: (success: Bool, errorCode: Int?) = await withCheckedContinuation { continuation in
             context.evaluatePolicy(.deviceOwnerAuthentication, localizedReason: reason) { success, error in
-                continuation.resume(returning: (success, (error as NSError?)?.code))
+                continuation.resume(returning: (success, error.map { ($0 as NSError).code }))
             }
         }
 

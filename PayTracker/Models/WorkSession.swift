@@ -61,10 +61,11 @@ final class WorkSession {
         // everywhere. Collapse it to a zero-length finished day rather than
         // dropping the end date, which would resurrect the session as "running"
         // and let it accrue pay forever.
-        self.endDate = endDate.map { max($0, startDate) }
+        let resolvedEnd = endDate.map { max($0, startDate) }
+        self.endDate = resolvedEnd
         // A negative break *adds* paid time in `duration()` (span − break), so
         // this clamp is what stops a bad value from inflating the pay.
-        let span = self.endDate.map { $0.timeIntervalSince(startDate) } ?? Sanitize.maxSessionDuration
+        let span = resolvedEnd.map { $0.timeIntervalSince(startDate) } ?? Sanitize.maxSessionDuration
         self.breakDuration = Sanitize.breakSeconds(breakDuration, within: span)
         self.hourlyRateSnapshot = Sanitize.rate(hourlyRateSnapshot)
         self.perHourBenefitsSnapshot = Sanitize.rate(perHourBenefitsSnapshot)
