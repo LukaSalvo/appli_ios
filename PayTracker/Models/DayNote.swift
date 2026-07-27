@@ -12,7 +12,7 @@ final class DayNote {
 
     init(day: Date, text: String, time: Date? = nil, createdAt: Date = .now) {
         self.day = Calendar.current.startOfDay(for: day)
-        self.text = text
+        self.text = Sanitize.text(text, fallback: "Note", maxLength: Sanitize.maxTitleLength)
         self.time = time
         self.createdAt = createdAt
     }

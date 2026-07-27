@@ -63,6 +63,38 @@ et ce qu'il vous reste à vivre.
   iOS 26+) affine la compréhension quand elle est disponible, sinon un
   analyseur local prend le relais — rien n'est envoyé en ligne.
 
+## Sécurité & vie privée
+
+L'app ne fait **aucun appel réseau** : tout (y compris l'IA, via les Foundation
+Models d'Apple) tourne sur l'iPhone. Les protections en place :
+
+- **Verrouillage par Face ID / Touch ID** (Réglages → Confidentialité). Le code
+  de l'iPhone sert de repli, donc le verrou fonctionne aussi sans biométrie.
+  L'app se re-verrouille dès qu'elle passe en arrière-plan, et se masque dans le
+  sélecteur d'applications — la capture d'écran que iOS enregistre sur le disque
+  ne contient plus aucun montant.
+- **Masquage des montants sur l'écran verrouillé** : le bilan quotidien et
+  l'activité en direct n'affichent plus que les heures, jamais les euros.
+- **Fichiers importés traités comme non fiables.** Une sauvegarde `.json` ou un
+  emploi du temps `.ics` peut venir de n'importe où. Chaque import est donc
+  plafonné en taille *avant* d'être lu (`BoundedFileReader`), limité en nombre
+  d'entrées, et chaque valeur est bornée (`Sanitize`, `AppBackup.checked()`) :
+  ni pause négative — qui *augmenterait* la paie, puisque le temps payé vaut
+  amplitude − pause —, ni taux infini, ni départ avant l'arrivée.
+- **Titres d'agenda isolés du modèle IA.** Un titre d'événement est écrit par
+  un tiers (calendrier partagé, fichier reçu) : il est nettoyé, tronqué, et
+  passé au modèle dans un bloc de données que les instructions lui demandent
+  explicitement de ne jamais interpréter comme une consigne.
+- **Textes affichés nettoyés** des caractères de contrôle et des inversions
+  bidirectionnelles Unicode, qui permettent de faire lire à un libellé autre
+  chose que ce qu'il contient.
+- **Aucun plantage au démarrage** si le magasin SwiftData est illisible : l'app
+  bascule sur un stockage mémoire et le signale, au lieu de devenir inutilisable.
+
+> ⚠️ Le fichier produit par « Exporter mes données » n'est **pas chiffré** : il
+> contient salaire, solde et dépenses en clair. À ranger dans un espace de
+> confiance.
+
 ## Architecture
 
 ```
@@ -83,6 +115,10 @@ PayTracker/
     SpeechRecognizer.swift     # Dictée vocale (framework Speech) pour l'assistant
     SessionReminder.swift      # Notif locale : session en cours oubliée
     DailySummaryNotification.swift # Notif locale : bilan quotidien à 18 h
+    AppLock.swift              # Verrou Face ID / Touch ID / code de l'iPhone
+    Sanitize.swift             # Bornes sur tout ce qui vient de l'extérieur
+    BoundedFileReader.swift    # Lecture de fichier plafonnée (imports)
+    AppBackup.swift            # Export + import validé d'une sauvegarde
   Views/
     AIAssistantView.swift      # Onglet « IA » : chat + barre clavier/vocale
     TrackerView.swift          # Suivi live (heure) / salaire mensuel — intégré en tête de l'onglet Heures
@@ -131,7 +167,9 @@ Le workflow GitHub Actions `.github/workflows/ci.yml` se déclenche à chaque
 `push` et `pull request`. Aucun secret requis.
 - **Sécurité** : scan de secrets (Gitleaks) + refus de tout fichier de
   signature sensible versionné (`.p12`, `.p8`, `.mobileprovision`, `.env`…) +
-  contrôle du `.gitignore`.
+  contrôle du `.gitignore` + refus de toute exception App Transport Security ou
+  URL `http://` + vérification que les garde-fous de sécurité (validation des
+  imports, verrouillage, isolation des titres d'agenda) sont toujours en place.
 - **Continuité** : génération XcodeGen → build sur simulateur iOS → tests
   (ignorés proprement tant qu'aucun test n'existe).
 

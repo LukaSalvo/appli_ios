@@ -75,7 +75,8 @@ enum AISessionCommandParser {
                 if departure == nil { departure = cal.date(bySettingHour: 17, minute: 0, second: 0, of: resolved.date) }
             }
 
-            let breakMinutes: Int? = d.hasBreak ? max(0, d.breakMinutes) : (intent == .add ? 0 : nil)
+            // The model's integer is free-form — keep it inside a day.
+            let breakMinutes: Int? = d.hasBreak ? Sanitize.breakMinutes(d.breakMinutes) : (intent == .add ? 0 : nil)
 
             return SessionCommand(
                 intent: intent,

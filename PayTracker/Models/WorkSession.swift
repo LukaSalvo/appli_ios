@@ -57,16 +57,34 @@ final class WorkSession {
         importedCalendar: ImportedCalendar? = nil
     ) {
         self.startDate = startDate
-        self.endDate = endDate
-        self.breakDuration = breakDuration
-        self.hourlyRateSnapshot = hourlyRateSnapshot
-        self.perHourBenefitsSnapshot = perHourBenefitsSnapshot
-        self.fixedBenefitsSnapshot = fixedBenefitsSnapshot
+        // A departure before the arrival would render as a negative span
+        // everywhere. Collapse it to a zero-length finished day rather than
+        // dropping the end date, which would resurrect the session as "running"
+        // and let it accrue pay forever.
+        self.endDate = endDate.map { max($0, startDate) }
+        // A negative break *adds* paid time in `duration()` (span − break), so
+        // this clamp is what stops a bad value from inflating the pay.
+        let span = self.endDate.map { $0.timeIntervalSince(startDate) } ?? Sanitize.maxSessionDuration
+        self.breakDuration = Sanitize.breakSeconds(breakDuration, within: span)
+        self.hourlyRateSnapshot = Sanitize.rate(hourlyRateSnapshot)
+        self.perHourBenefitsSnapshot = Sanitize.rate(perHourBenefitsSnapshot)
+        self.fixedBenefitsSnapshot = Sanitize.amount(fixedBenefitsSnapshot)
         self.kindRaw = kind.rawValue
         self.importedCalendar = importedCalendar
     }
 
     var isActive: Bool { endDate == nil }
+
+    /// Re-times an existing session under the same rules as ``init`` — the edit
+    /// form and the assistant both rewrite these three fields, and going
+    /// through here keeps a stored session from ever holding a departure before
+    /// its arrival or a break longer than the day itself.
+    func retime(startDate newStart: Date, endDate newEnd: Date?, breakDuration newBreak: TimeInterval) {
+        startDate = newStart
+        endDate = newEnd.map { max($0, newStart) }
+        let span = endDate.map { $0.timeIntervalSince(newStart) } ?? Sanitize.maxSessionDuration
+        breakDuration = Sanitize.breakSeconds(newBreak, within: span)
+    }
 
     /// Gross span between arrival and departure, before removing the break.
     func grossDuration(asOf now: Date = Date()) -> TimeInterval {

@@ -18,9 +18,9 @@ final class VariableExpense {
     }
 
     init(name: String, amount: Double, date: Date = .now, category: ExpenseCategory = .other) {
-        self.name = name
-        self.amount = amount
-        self.date = date
+        self.name = Sanitize.text(name, fallback: category.rawValue)
+        self.amount = Sanitize.amount(amount)
+        self.date = Sanitize.isPlausible(date) ? date : .now
         self.categoryRawValue = category.rawValue
     }
 }

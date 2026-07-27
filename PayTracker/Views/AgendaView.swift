@@ -440,15 +440,19 @@ struct AgendaView: View {
     }
 
     private func importICS(_ url: URL) {
-        let access = url.startAccessingSecurityScopedResource()
-        defer { if access { url.stopAccessingSecurityScopedResource() } }
-        let text = (try? String(contentsOf: url, encoding: .utf8))
-            ?? (try? String(contentsOf: url, encoding: .isoLatin1))
-        guard let text else {
-            importMessage = "Impossible de lire le fichier."
+        // Read through the bounded reader: `String(contentsOf:)` would load an
+        // arbitrarily large file into memory and get the app killed before the
+        // parser ever saw it.
+        let text: String
+        do {
+            text = try BoundedFileReader.text(at: url, maxBytes: ICSParser.Limits.maxFileBytes)
+        } catch {
+            importMessage = error.localizedDescription
             return
         }
-        handle(ICSParser.parse(text), sourceName: url.deletingPathExtension().lastPathComponent)
+        let name = Sanitize.text(url.deletingPathExtension().lastPathComponent,
+                                 fallback: "Calendrier importé")
+        handle(ICSParser.parse(text), sourceName: name)
     }
 
     private func importFromAppleCalendar() {

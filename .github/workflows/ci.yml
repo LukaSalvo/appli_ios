@@ -32,6 +32,9 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # Ne laisse pas le jeton d'authentification dans .git/config :
+          # une étape suivante (ou une action tierce) pourrait le lire.
+          persist-credentials: false
 
       - name: Scan de secrets (Gitleaks)
         uses: gitleaks/gitleaks-action@v2
@@ -59,6 +62,45 @@ jobs:
             fi
           done
           echo "Contrôle .gitignore terminé."
+
+      - name: Refuser un affaiblissement du transport (ATS) ou du HTTP en clair
+        run: |
+          # L'app est 100 % hors-ligne : aucune exception App Transport Security
+          # ni URL http:// ne doit apparaître. Si un jour du réseau est ajouté,
+          # ce garde-fou force à le faire en HTTPS et sans désactiver ATS.
+          # .github est exclu : ce fichier contient lui-même les motifs recherchés.
+          EXCLURE="--exclude-dir=.git --exclude-dir=.github"
+          echo "Recherche d'exceptions ATS…"
+          if grep -rn $EXCLURE --include='*.swift' --include='*.yml' --include='*.plist' \
+               -E 'NSAllowsArbitraryLoads|NSExceptionAllowsInsecureHTTPLoads|NSAllowsLocalNetworking' . ; then
+            echo "::error::Exception App Transport Security détectée."
+            exit 1
+          fi
+          echo "Recherche d'URL en clair…"
+          # http://www.w3.org/... et consorts (namespaces XML) ne sont pas des appels réseau.
+          if grep -rn $EXCLURE --include='*.swift' -E 'URL\(string: *"http://' . ; then
+            echo "::error::URL http:// en clair détectée."
+            exit 1
+          fi
+          echo "OK : transport non affaibli."
+
+      - name: Vérifier que le verrouillage et la validation d'import restent en place
+        run: |
+          # Ces garde-fous ont été ajoutés à la suite d'un audit : une
+          # suppression accidentelle doit casser la CI, pas passer inaperçue.
+          manquants=0
+          verifier() {
+            if ! grep -rqs -- "$2" "$1"; then
+              echo "::error::Garde-fou manquant dans $1 : $2"
+              manquants=1
+            fi
+          }
+          verifier PayTracker/Views/SettingsView.swift "AppBackup.load(from:"
+          verifier PayTracker/Views/AgendaView.swift "BoundedFileReader.text"
+          verifier PayTracker/Models/AppBackup.swift "func checked("
+          verifier PayTracker/Models/AppModelContainer.swift "isMemoryFallback"
+          verifier PayTracker/Models/AIScheduleClassifier.swift "sanitizedTitle"
+          exit $manquants
 
   # ---------------------------------------------------------------------------
   # 2) CONTINUITÉ : le projet doit se générer, compiler et passer les tests.

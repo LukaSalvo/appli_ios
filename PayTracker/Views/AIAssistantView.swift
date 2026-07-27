@@ -290,7 +290,7 @@ struct AIAssistantView: View {
         let start = combine(day: c.day, time: c.arrival ?? defaultTime(9, on: c.day))
         var end = combine(day: c.day, time: c.departure ?? defaultTime(17, on: c.day))
         if end <= start { end.addTimeInterval(24 * 3600) }
-        let breakMin = c.breakMinutes ?? 0
+        let breakMin = Sanitize.breakMinutes(c.breakMinutes ?? 0)
 
         let session = WorkSession(
             startDate: start,
@@ -333,15 +333,15 @@ struct AIAssistantView: View {
         if let departure = c.departure { end = combine(day: day, time: departure) }
         if end <= start { end = end.addingTimeInterval(24 * 3600) }
 
-        session.startDate = start
-        session.endDate = end
-        if let br = c.breakMinutes { session.breakDuration = Double(br) * 60 }
+        session.retime(
+            startDate: start,
+            endDate: end,
+            breakDuration: c.breakMinutes.map { Double(Sanitize.breakMinutes($0)) * 60 } ?? prevBreak
+        )
 
         let msg = "✏️ Journée du \(dayLabel(day)) mise à jour.\n\(timeLabel(start))–\(timeLabel(end)) · \(formatHours(session.duration() / 3600)) travaillées · \(Money.string(session.totalPay()))"
         return CommandResult(message: msg) {
-            session.startDate = prevStart
-            session.endDate = prevEnd
-            session.breakDuration = prevBreak
+            session.retime(startDate: prevStart, endDate: prevEnd, breakDuration: prevBreak)
         }
     }
 

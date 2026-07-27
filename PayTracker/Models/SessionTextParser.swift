@@ -55,14 +55,17 @@ enum SessionTextParser {
     }
 
     /// Break in minutes when the sentence mentions "pause" with a duration.
+    /// Clamped to a day: the regex happily reads "999999 h de pause", and that
+    /// number would go straight into a stored session.
     static func detectBreakMinutes(in text: String) -> Int {
         let t = text.lowercased()
         guard t.contains("pause") else { return 0 }
         if let hours = firstNumber(#"(\d+)\s*h[^0-9]*pause|pause[^0-9]*(\d+)\s*h"#, in: t) {
-            return hours * 60
+            // Clamp before multiplying — "9223372036854775807 h" would trap.
+            return Sanitize.breakMinutes(min(hours, 24) * 60)
         }
         if let minutes = firstNumber(#"(\d+)\s*m(?:in)?[^0-9]*pause|pause[^0-9]*(\d+)\s*m(?:in)?"#, in: t) {
-            return minutes
+            return Sanitize.breakMinutes(minutes)
         }
         return 0
     }

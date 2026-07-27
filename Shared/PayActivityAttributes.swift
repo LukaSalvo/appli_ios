@@ -14,6 +14,11 @@ struct PayActivityAttributes: ActivityAttributes {
         var earned: Double
         /// Effective hourly rate (base rate + per-hour benefits), for context.
         var ratePerHour: Double
+        /// When true the widget masks the euro figures: a Live Activity is drawn
+        /// on the Lock Screen, so without this the rate and the running total are
+        /// legible to anyone who glances at the phone. Defaults to `false` so an
+        /// activity started by an older build still decodes.
+        var hideAmounts: Bool = false
     }
 
     /// Static label shown by the activity.

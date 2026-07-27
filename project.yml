@@ -23,6 +23,10 @@ targets:
         NSCalendarsUsageDescription: "L'accès à votre calendrier permet d'importer votre emploi du temps d'alternance (jours d'école et d'entreprise)."
         NSMicrophoneUsageDescription: "Le micro permet de décrire votre journée ou de dicter vos heures à voix haute."
         NSSpeechRecognitionUsageDescription: "La reconnaissance vocale, sur votre iPhone, transforme votre voix en horaires de travail."
+        NSFaceIDUsageDescription: "Face ID verrouille l'accès à votre paie, votre solde et vos dépenses."
+        # L'app n'embarque aucun chiffrement propre et n'utilise que celui d'iOS :
+        # déclaré ici pour éviter la question à chaque envoi sur App Store Connect.
+        ITSAppUsesNonExemptEncryption: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.lukasalvo.paytracker

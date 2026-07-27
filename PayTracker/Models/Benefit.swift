@@ -22,8 +22,10 @@ final class Benefit {
     }
 
     init(name: String, amount: Double, type: BenefitType = .perShift, isEnabled: Bool = true) {
-        self.name = name
-        self.amount = amount
+        self.name = Sanitize.text(name, fallback: "Avantage")
+        // A per-hour benefit is added to the hourly rate, a per-shift one is a
+        // lump sum — they do not share a plausible ceiling.
+        self.amount = type == .perHour ? Sanitize.rate(amount) : Sanitize.amount(amount)
         self.typeRawValue = type.rawValue
         self.isEnabled = isEnabled
         self.createdAt = Date()
